@@ -1,0 +1,2270 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>PRX Attire — Business Dashboard</title>
+<script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/Chart.js/4.4.1/chart.umd.js"></script>
+<style>
+  :root {
+    --bg: #050510;
+    --bg-2: #0a0a18;
+    --card: #0f0f24;
+    --card-elev: #161630;
+    --card-hi: #1c1c3d;
+    --border: rgba(255,255,255,0.06);
+    --border-hi: rgba(255,255,255,0.14);
+    --text: #ececf5;
+    --muted: #8a8aa8;
+    --dim: #5a5a78;
+    --accent: #a855f7;
+    --accent-2: #06b6d4;
+    --accent-3: #ec4899;
+    --accent-4: #facc15;
+    --grad-1: linear-gradient(135deg, #a855f7 0%, #06b6d4 100%);
+    --grad-2: linear-gradient(135deg, #ec4899 0%, #facc15 100%);
+    --grad-3: linear-gradient(135deg, #06b6d4 0%, #22d3ee 100%);
+    --grad-green: linear-gradient(135deg, #10b981 0%, #06b6d4 100%);
+    --grad-fire: linear-gradient(135deg, #f97316 0%, #ec4899 100%);
+    --green: #10b981;
+    --green-glow: rgba(16,185,129,0.4);
+    --amber: #f59e0b;
+    --amber-glow: rgba(245,158,11,0.4);
+    --red: #ef4444;
+    --red-glow: rgba(239,68,68,0.4);
+    --purple-glow: rgba(168,85,247,0.5);
+    --cyan-glow: rgba(6,182,212,0.5);
+    --shadow-soft: 0 8px 32px rgba(0,0,0,0.5);
+    --shadow-glow: 0 0 40px var(--purple-glow);
+  }
+  * { box-sizing: border-box; margin: 0; padding: 0; }
+  html, body { background: var(--bg); }
+  body {
+    font-family: 'Inter', -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+    background:
+      radial-gradient(ellipse 1000px 700px at 5% -5%, rgba(168,85,247,0.18) 0%, transparent 55%),
+      radial-gradient(ellipse 800px 600px at 95% 20%, rgba(6,182,212,0.15) 0%, transparent 55%),
+      radial-gradient(ellipse 700px 600px at 50% 100%, rgba(236,72,153,0.1) 0%, transparent 55%),
+      var(--bg);
+    background-attachment: fixed;
+    color: var(--text);
+    line-height: 1.5;
+    padding: 24px;
+    max-width: 1400px;
+    margin: 0 auto;
+    min-height: 100vh;
+  }
+
+  /* ===== HEADER ===== */
+  header { display: flex; justify-content: space-between; align-items: center; margin-bottom: 24px; flex-wrap: wrap; gap: 14px; }
+  .brand { display: flex; align-items: center; gap: 14px; }
+  .brand .logo {
+    width: 48px; height: 48px; border-radius: 14px;
+    background: var(--grad-1);
+    display: flex; align-items: center; justify-content: center;
+    font-weight: 900; font-size: 22px;
+    box-shadow: 0 0 32px var(--purple-glow), inset 0 1px 0 rgba(255,255,255,0.2);
+  }
+  .brand h1 {
+    font-size: 28px; font-weight: 800; letter-spacing: -0.03em;
+    background: var(--grad-1);
+    -webkit-background-clip: text; background-clip: text; -webkit-text-fill-color: transparent;
+    line-height: 1;
+  }
+  .brand .tag { font-size: 11px; color: var(--muted); text-transform: uppercase; letter-spacing: 0.1em; font-weight: 700; margin-top: 4px; }
+  .header-right { display: flex; align-items: center; gap: 10px; flex-wrap: wrap; }
+  .sync-pill {
+    display: inline-flex; align-items: center; gap: 8px;
+    padding: 8px 14px; border-radius: 999px;
+    font-size: 11px; font-weight: 700; text-transform: uppercase; letter-spacing: 0.08em;
+    background: rgba(16,185,129,0.12); border: 1px solid rgba(16,185,129,0.35); color: #34d399;
+    transition: all 0.3s;
+  }
+  .sync-pill .dot {
+    width: 8px; height: 8px; border-radius: 50%;
+    background: #34d399; box-shadow: 0 0 10px var(--green-glow);
+    animation: pulse 2s infinite;
+  }
+  .sync-pill.syncing { background: rgba(245,158,11,0.12); border-color: rgba(245,158,11,0.35); color: #fbbf24; }
+  .sync-pill.syncing .dot { background: #fbbf24; box-shadow: 0 0 10px var(--amber-glow); }
+  .sync-pill.error { background: rgba(239,68,68,0.12); border-color: rgba(239,68,68,0.35); color: #f87171; }
+  .sync-pill.error .dot { background: #f87171; box-shadow: 0 0 10px var(--red-glow); }
+  .sync-pill.cloud { background: rgba(168,85,247,0.12); border-color: rgba(168,85,247,0.35); color: #c084fc; }
+  .sync-pill.cloud .dot { background: #c084fc; box-shadow: 0 0 10px var(--purple-glow); }
+  @keyframes pulse { 0%,100% { opacity: 1; } 50% { opacity: 0.4; } }
+
+  .month-selector {
+    display: flex; align-items: center; gap: 8px;
+    background: var(--card); border: 1px solid var(--border);
+    padding: 7px 12px; border-radius: 12px;
+  }
+  .month-selector label { font-size: 10px; text-transform: uppercase; color: var(--muted); letter-spacing: 0.08em; font-weight: 700; }
+  .month-selector select { background: transparent; color: var(--text); border: none; font-size: 13px; font-weight: 600; cursor: pointer; outline: none; font-family: inherit; }
+  .month-selector select option { background: var(--bg-2); }
+
+  .health-badge {
+    display: inline-flex; align-items: center; gap: 8px;
+    padding: 8px 14px; border-radius: 999px;
+    font-size: 11px; font-weight: 700; text-transform: uppercase; letter-spacing: 0.08em;
+    border: 1px solid var(--border);
+  }
+  .health-badge.good { background: rgba(16,185,129,0.12); border-color: rgba(16,185,129,0.35); color: #34d399; }
+  .health-badge.warn { background: rgba(245,158,11,0.12); border-color: rgba(245,158,11,0.35); color: #fbbf24; }
+  .health-badge.risk { background: rgba(239,68,68,0.12); border-color: rgba(239,68,68,0.35); color: #f87171; }
+
+  /* ===== TABS ===== */
+  .tabs {
+    display: flex; gap: 4px;
+    background: var(--card); border: 1px solid var(--border);
+    padding: 5px; border-radius: 14px; margin-bottom: 22px;
+    overflow-x: auto;
+    scrollbar-width: thin;
+  }
+  .tabs::-webkit-scrollbar { height: 4px; }
+  .tabs::-webkit-scrollbar-thumb { background: var(--accent); border-radius: 2px; }
+  .tab {
+    padding: 9px 16px; border-radius: 10px;
+    font-size: 13px; font-weight: 600;
+    color: var(--muted); cursor: pointer;
+    white-space: nowrap;
+    transition: all 0.25s;
+    display: flex; align-items: center; gap: 7px;
+    border: none; background: transparent;
+    font-family: inherit;
+  }
+  .tab:hover { color: var(--text); background: rgba(255,255,255,0.03); }
+  .tab.active {
+    background: var(--grad-1); color: white;
+    box-shadow: 0 6px 22px rgba(168,85,247,0.45);
+  }
+  .tab-content { display: none; animation: fadeIn 0.4s ease; }
+  .tab-content.active { display: block; }
+  @keyframes fadeIn { from { opacity: 0; transform: translateY(8px); } to { opacity: 1; transform: translateY(0); } }
+
+  /* ===== CARDS ===== */
+  .card-section {
+    background: var(--card);
+    border: 1px solid var(--border);
+    border-radius: 18px;
+    padding: 22px 24px;
+    margin-bottom: 16px;
+    box-shadow: var(--shadow-soft);
+    transition: border-color 0.25s;
+  }
+  .card-section:hover { border-color: var(--border-hi); }
+  .card-head {
+    display: flex; justify-content: space-between; align-items: flex-start;
+    margin-bottom: 18px; gap: 12px; flex-wrap: wrap;
+  }
+  .card-head h2 {
+    font-size: 17px; font-weight: 700;
+    display: flex; align-items: center; gap: 10px;
+    letter-spacing: -0.01em;
+  }
+  .card-head .ico {
+    width: 32px; height: 32px; border-radius: 10px;
+    background: var(--grad-1);
+    display: flex; align-items: center; justify-content: center; font-size: 15px;
+  }
+  .card-head .ico.cyan { background: var(--grad-3); }
+  .card-head .ico.pink { background: var(--grad-2); }
+  .card-head .ico.fire { background: var(--grad-fire); }
+  .card-head .ico.green { background: var(--grad-green); }
+  .card-head .desc { font-size: 12px; color: var(--muted); margin-top: 4px; }
+
+  /* ===== HERO ===== */
+  .hero {
+    background:
+      radial-gradient(ellipse 700px 350px at 80% 50%, rgba(168,85,247,0.25) 0%, transparent 70%),
+      var(--card);
+    border: 1px solid var(--border);
+    border-radius: 22px;
+    padding: 34px 38px;
+    margin-bottom: 22px;
+    position: relative;
+    overflow: hidden;
+    box-shadow: var(--shadow-soft);
+  }
+  .hero::before {
+    content: ''; position: absolute; top: 0; left: 0; right: 0; height: 2px;
+    background: var(--grad-1); opacity: 0.8;
+  }
+  .hero .label { font-size: 11px; text-transform: uppercase; letter-spacing: 0.14em; color: var(--accent-2); font-weight: 700; margin-bottom: 10px; }
+  .hero .big {
+    font-size: 56px; font-weight: 900; letter-spacing: -0.03em; line-height: 1;
+    background: var(--grad-1); -webkit-background-clip: text; background-clip: text; -webkit-text-fill-color: transparent;
+  }
+  .hero .sub { font-size: 14px; color: var(--muted); margin-top: 14px; max-width: 640px; line-height: 1.6; }
+
+  /* ===== HORIZON CARDS ===== */
+  .horizon { display: grid; grid-template-columns: repeat(auto-fit, minmax(220px, 1fr)); gap: 14px; margin-bottom: 22px; }
+  .horizon-card {
+    background: var(--card); border: 1px solid var(--border); border-radius: 16px;
+    padding: 18px 22px; position: relative; overflow: hidden; transition: all 0.3s;
+  }
+  .horizon-card:hover { border-color: var(--border-hi); transform: translateY(-3px); box-shadow: 0 12px 40px rgba(168,85,247,0.2); }
+  .horizon-card::before { content: ''; position: absolute; top: 0; left: 0; right: 0; height: 2px; opacity: 0.8; }
+  .horizon-card.now::before { background: var(--grad-3); }
+  .horizon-card.short::before { background: var(--grad-1); }
+  .horizon-card.long::before { background: var(--grad-2); }
+  .horizon-card .when { font-size: 10px; text-transform: uppercase; letter-spacing: 0.1em; color: var(--muted); font-weight: 700; }
+  .horizon-card .value { font-size: 30px; font-weight: 800; margin-top: 8px; letter-spacing: -0.02em; }
+  .horizon-card.now .value { background: var(--grad-3); -webkit-background-clip: text; -webkit-text-fill-color: transparent; background-clip: text; }
+  .horizon-card.short .value { background: var(--grad-1); -webkit-background-clip: text; -webkit-text-fill-color: transparent; background-clip: text; }
+  .horizon-card.long .value { background: var(--grad-2); -webkit-background-clip: text; -webkit-text-fill-color: transparent; background-clip: text; }
+  .horizon-card .delta { font-size: 12px; color: var(--green); margin-top: 6px; font-weight: 600; }
+
+  /* ===== KPI STRIP (compact) ===== */
+  .kpi-strip { display: grid; grid-template-columns: repeat(auto-fit, minmax(160px, 1fr)); gap: 12px; margin-bottom: 22px; }
+  .kpi {
+    background: var(--card); border: 1px solid var(--border); border-radius: 14px;
+    padding: 16px 18px; position: relative; overflow: hidden; transition: all 0.25s;
+  }
+  .kpi:hover { border-color: var(--border-hi); transform: translateY(-2px); }
+  .kpi::before { content: ''; position: absolute; top: 0; left: 0; right: 0; height: 1px; background: var(--grad-1); opacity: 0.6; }
+  .kpi .label { font-size: 10px; color: var(--muted); text-transform: uppercase; letter-spacing: 0.1em; font-weight: 700; margin-bottom: 8px; }
+  .kpi .value { font-size: 22px; font-weight: 800; letter-spacing: -0.02em;
+    background: var(--grad-1); -webkit-background-clip: text; -webkit-text-fill-color: transparent; background-clip: text; }
+  .kpi .value.positive { background: var(--grad-green); -webkit-background-clip: text; -webkit-text-fill-color: transparent; background-clip: text; }
+  .kpi .value.negative { background: var(--grad-fire); -webkit-background-clip: text; -webkit-text-fill-color: transparent; background-clip: text; }
+
+  /* ===== ROWS, EDITABLES, INPUTS ===== */
+  .row { display: flex; align-items: center; gap: 12px; padding: 11px 0; border-bottom: 1px solid var(--border); transition: background 0.15s; }
+  .row:last-child { border-bottom: none; }
+  .row:hover { background: rgba(255,255,255,0.02); margin: 0 -8px; padding: 11px 8px; border-radius: 8px; }
+  .row .grow { flex: 1; min-width: 0; }
+  .row.done .editable, .row.done input { text-decoration: line-through; opacity: 0.5; }
+
+  .editable {
+    cursor: text; padding: 4px 8px; border-radius: 6px;
+    transition: background 0.15s, box-shadow 0.15s;
+    display: inline-block; color: var(--text); word-break: break-word;
+  }
+  .editable:hover { background: rgba(168,85,247,0.1); }
+  .editable:focus { background: rgba(168,85,247,0.18); outline: none; box-shadow: 0 0 0 2px var(--accent); }
+
+  input.num, input.text-input, select.select-input {
+    border: 1px solid var(--border); background: rgba(255,255,255,0.03);
+    padding: 7px 10px; border-radius: 8px; width: 110px;
+    font-family: inherit; font-size: 13px; text-align: right;
+    color: var(--text); transition: all 0.15s;
+  }
+  select.select-input { text-align: left; width: auto; padding-right: 30px; }
+  select.select-input option { background: var(--bg-2); }
+  input.num:hover, input.text-input:hover, select.select-input:hover { background: rgba(255,255,255,0.05); border-color: var(--border-hi); }
+  input.num:focus, input.text-input:focus, select.select-input:focus { background: rgba(168,85,247,0.1); border-color: var(--accent); outline: none; box-shadow: 0 0 0 3px rgba(168,85,247,0.15); }
+
+  /* ===== CHECKBOXES ===== */
+  .checkbox {
+    width: 22px; height: 22px; border: 2px solid var(--dim); border-radius: 6px;
+    display: inline-flex; align-items: center; justify-content: center;
+    cursor: pointer; flex-shrink: 0; transition: all 0.2s; background: rgba(255,255,255,0.02);
+  }
+  .checkbox:hover { border-color: var(--accent-2); transform: scale(1.05); }
+  .checkbox.checked { background: var(--grad-3); border-color: var(--accent-2); box-shadow: 0 0 18px var(--cyan-glow); }
+  .checkbox.checked::after { content: '✓'; font-size: 14px; font-weight: bold; color: white; }
+
+  /* ===== PILLS ===== */
+  .pill {
+    padding: 5px 12px; border-radius: 999px; font-size: 10px;
+    font-weight: 700; text-transform: uppercase; letter-spacing: 0.06em;
+    cursor: pointer; user-select: none; border: 1px solid transparent;
+    flex-shrink: 0; transition: all 0.15s;
+  }
+  .pill:hover { transform: scale(1.05); }
+  .pill.done { background: rgba(16,185,129,0.15); color: #34d399; border-color: rgba(16,185,129,0.4); box-shadow: 0 0 12px var(--green-glow); }
+  .pill.progress { background: rgba(245,158,11,0.15); color: #fbbf24; border-color: rgba(245,158,11,0.4); box-shadow: 0 0 12px var(--amber-glow); }
+  .pill.pending { background: rgba(239,68,68,0.15); color: #f87171; border-color: rgba(239,68,68,0.4); box-shadow: 0 0 12px var(--red-glow); }
+  .pill.tentative { background: rgba(255,255,255,0.04); color: var(--muted); border: 1px dashed var(--dim); }
+  .pill.closed { background: rgba(168,85,247,0.18); color: #c084fc; border-color: rgba(168,85,247,0.4); box-shadow: 0 0 14px var(--purple-glow); }
+  .pill.active { background: rgba(16,185,129,0.18); color: #34d399; border-color: rgba(16,185,129,0.4); }
+  .pill.intalks, .pill\[in\ talks\] { background: rgba(245,158,11,0.15); color: #fbbf24; border-color: rgba(245,158,11,0.4); }
+  .pill.lead { background: rgba(255,255,255,0.04); color: var(--muted); border: 1px solid var(--border); }
+  .pill.cold { background: rgba(255,255,255,0.06); color: var(--muted); border: 1px solid var(--border-hi); }
+  .pill.intrack { background: rgba(245,158,11,0.15); color: #fbbf24; border-color: rgba(245,158,11,0.4); }
+
+  /* ===== TOGGLE SWITCH ===== */
+  .toggle-switch {
+    position: relative; width: 38px; height: 22px;
+    background: rgba(255,255,255,0.08); border-radius: 999px; cursor: pointer;
+    transition: all 0.25s; flex-shrink: 0; border: 1px solid var(--border);
+  }
+  .toggle-switch.on { background: var(--grad-1); border-color: transparent; box-shadow: 0 0 14px var(--purple-glow); }
+  .toggle-switch::after {
+    content: ''; position: absolute; top: 2px; left: 2px;
+    width: 16px; height: 16px; background: white; border-radius: 50%; transition: transform 0.25s;
+  }
+  .toggle-switch.on::after { transform: translateX(16px); }
+
+  /* ===== BUTTONS ===== */
+  .btn {
+    background: rgba(255,255,255,0.04); border: 1px solid var(--border); color: var(--text);
+    padding: 8px 14px; border-radius: 10px; font-size: 13px; font-weight: 600;
+    cursor: pointer; transition: all 0.2s; display: inline-flex; align-items: center; gap: 6px;
+    font-family: inherit;
+  }
+  .btn:hover { background: rgba(255,255,255,0.08); border-color: var(--accent); transform: translateY(-1px); }
+  .btn-primary { background: var(--grad-1); color: white; border-color: transparent; box-shadow: 0 4px 14px rgba(168,85,247,0.35); }
+  .btn-primary:hover { box-shadow: 0 8px 24px rgba(168,85,247,0.55); }
+  .btn-danger:hover { background: rgba(239,68,68,0.1); color: #f87171; border-color: var(--red); }
+  .btn-sm { padding: 5px 10px; font-size: 12px; }
+  .add-row-btn { margin-top: 10px; color: var(--accent-2); border-style: dashed; }
+  .add-row-btn:hover { background: rgba(6,182,212,0.08); border-color: var(--accent-2); }
+
+  /* ===== CALENDAR ===== */
+  .calendar-strip {
+    display: flex; gap: 10px; overflow-x: auto; padding-bottom: 10px; margin-bottom: 14px;
+  }
+  .calendar-strip::-webkit-scrollbar { height: 5px; }
+  .calendar-strip::-webkit-scrollbar-thumb { background: var(--accent); border-radius: 3px; }
+  .month-pill {
+    flex-shrink: 0; padding: 14px 16px; background: var(--card-elev);
+    border: 1px solid var(--border); border-radius: 12px; cursor: pointer;
+    min-width: 130px; transition: all 0.2s; text-align: center;
+  }
+  .month-pill:hover { border-color: var(--accent); transform: translateY(-2px); }
+  .month-pill.active { background: var(--grad-1); border-color: transparent; box-shadow: 0 8px 26px rgba(168,85,247,0.45); }
+  .month-pill .mname { font-size: 11px; font-weight: 700; text-transform: uppercase; letter-spacing: 0.08em; color: var(--muted); }
+  .month-pill.active .mname { color: rgba(255,255,255,0.9); }
+  .month-pill .mtotal { font-size: 16px; font-weight: 800; margin-top: 4px; color: var(--text); }
+  .month-pill.active .mtotal { color: white; }
+
+  .month-detail { background: var(--card-elev); border-radius: 14px; padding: 18px; margin-top: 8px; border: 1px solid var(--border); }
+  .month-detail h3 {
+    font-size: 13px; font-weight: 700; margin-bottom: 12px;
+    background: var(--grad-1); -webkit-background-clip: text; background-clip: text; -webkit-text-fill-color: transparent;
+    text-transform: uppercase; letter-spacing: 0.06em;
+  }
+  .month-total-row {
+    display: flex; justify-content: space-between; padding-top: 12px; margin-top: 10px;
+    border-top: 2px solid var(--border-hi); font-weight: 800; font-size: 15px;
+  }
+  .month-total-row .amount { background: var(--grad-1); -webkit-background-clip: text; -webkit-text-fill-color: transparent; background-clip: text; }
+
+  /* ===== CLIENT / BATCH CARDS ===== */
+  .client-card {
+    background: var(--card-elev); border: 1px solid var(--border);
+    border-radius: 14px; padding: 18px; margin-bottom: 12px; transition: all 0.25s;
+  }
+  .client-card:hover { border-color: var(--border-hi); }
+  .client-card.closed { border-color: rgba(168,85,247,0.4); box-shadow: 0 0 20px rgba(168,85,247,0.15); }
+  .client-card.done { border-color: rgba(16,185,129,0.4); box-shadow: 0 0 20px rgba(16,185,129,0.15); }
+  .client-card h3 { font-size: 15px; font-weight: 700; margin-bottom: 4px; }
+  .client-card .meta { color: var(--muted); font-size: 12px; margin-bottom: 12px; }
+
+  /* ===== CALC PANEL ===== */
+  .calc-panel {
+    background: rgba(168,85,247,0.06); border: 1px dashed rgba(168,85,247,0.35);
+    border-radius: 12px; padding: 16px; margin-top: 14px;
+  }
+  .calc-panel h4 {
+    font-size: 12px; text-transform: uppercase; letter-spacing: 0.08em;
+    color: var(--accent-2); font-weight: 700; margin-bottom: 12px;
+  }
+  .calc-grid {
+    display: grid; grid-template-columns: 2fr 1fr 1fr 1fr 30px;
+    gap: 8px; align-items: center; padding: 8px 0; border-bottom: 1px solid var(--border);
+  }
+  .calc-grid:last-child { border-bottom: none; }
+  .calc-grid .label-cell { font-size: 10px; color: var(--muted); text-transform: uppercase; letter-spacing: 0.06em; font-weight: 700; }
+  .calc-total {
+    margin-top: 12px; padding-top: 12px; border-top: 2px solid rgba(168,85,247,0.4);
+    display: flex; justify-content: space-between; font-weight: 800; font-size: 15px;
+  }
+  .calc-total .amt {
+    background: var(--grad-1); -webkit-background-clip: text; background-clip: text; -webkit-text-fill-color: transparent;
+  }
+
+  /* ===== FUNNEL ===== */
+  .funnel { display: grid; grid-template-columns: repeat(4, 1fr); gap: 10px; margin-bottom: 14px; }
+  .funnel-stage {
+    text-align: center; padding: 16px 12px; border-radius: 12px;
+    background: var(--card-elev); border: 1px solid var(--border); transition: all 0.2s;
+  }
+  .funnel-stage:hover { border-color: var(--accent); transform: translateY(-2px); }
+  .funnel-stage .label { font-size: 10px; text-transform: uppercase; letter-spacing: 0.08em; color: var(--muted); font-weight: 700; }
+  .funnel-stage input.num {
+    text-align: center; width: 80px; font-size: 26px; font-weight: 800;
+    background: transparent; border: none; margin-top: 6px; color: var(--text);
+  }
+  .funnel-stage:nth-child(1) input.num { color: #f87171; }
+  .funnel-stage:nth-child(2) input.num { color: #fbbf24; }
+  .funnel-stage:nth-child(3) input.num { color: #06b6d4; }
+  .funnel-stage:nth-child(4) input.num { color: #34d399; }
+
+  /* ===== PROGRESS BARS ===== */
+  .progress-bar { height: 10px; background: rgba(255,255,255,0.05); border-radius: 999px; overflow: hidden; border: 1px solid var(--border); }
+  .progress-bar-fill { height: 100%; background: var(--grad-1); transition: width 0.5s ease; box-shadow: 0 0 12px var(--purple-glow); }
+  .progress-bar-fill.green { background: var(--grad-green); box-shadow: 0 0 12px var(--green-glow); }
+  .progress-bar-fill.fire { background: var(--grad-fire); }
+
+  /* ===== PROGRESS RINGS ===== */
+  .rings { display: grid; grid-template-columns: repeat(auto-fit, minmax(200px, 1fr)); gap: 14px; }
+  .ring-card {
+    background: var(--card-elev); border-radius: 14px; padding: 22px;
+    display: flex; flex-direction: column; align-items: center; text-align: center;
+    border: 1px solid var(--border); transition: all 0.25s;
+  }
+  .ring-card:hover { border-color: var(--border-hi); transform: translateY(-2px); }
+  .ring { position: relative; width: 130px; height: 130px; margin-bottom: 12px; }
+  .ring svg { transform: rotate(-90deg); }
+  .ring circle.bg { stroke: rgba(255,255,255,0.06); }
+  .ring circle.fill { stroke-linecap: round; transition: stroke-dashoffset 1.4s ease; filter: drop-shadow(0 0 6px currentColor); }
+  .ring .pct { position: absolute; inset: 0; display: flex; align-items: center; justify-content: center; font-size: 24px; font-weight: 800; }
+  .ring-card .label { font-size: 11px; color: var(--muted); text-transform: uppercase; letter-spacing: 0.08em; font-weight: 700; margin-bottom: 4px; }
+  .ring-card .detail { font-size: 12px; color: var(--text); font-weight: 600; }
+
+  /* ===== BATCH TABLE ===== */
+  .batch-row {
+    display: grid; grid-template-columns: 70px 1.5fr 70px 1.2fr 1.2fr 110px 30px;
+    gap: 10px; align-items: center; padding: 10px 0;
+    border-bottom: 1px solid var(--border);
+  }
+  .batch-row.head { font-size: 10px; text-transform: uppercase; color: var(--muted); font-weight: 700; letter-spacing: 0.06em; padding-bottom: 10px; border-bottom: 2px solid var(--border-hi); }
+  .batch-row .id-cell { font-family: 'JetBrains Mono', monospace; color: var(--accent-2); font-weight: 700; font-size: 13px; }
+  .batch-stats { display: grid; grid-template-columns: repeat(4, 1fr); gap: 10px; margin-bottom: 18px; }
+  .batch-stat {
+    background: var(--card-elev); border: 1px solid var(--border);
+    border-radius: 12px; padding: 14px 16px;
+  }
+  .batch-stat .label { font-size: 10px; color: var(--muted); text-transform: uppercase; letter-spacing: 0.08em; font-weight: 700; }
+  .batch-stat .v { font-size: 22px; font-weight: 800; margin-top: 4px; }
+  .batch-stat.done .v { color: #34d399; }
+  .batch-stat.intrack .v { color: #fbbf24; }
+  .batch-stat.pending .v { color: #f87171; }
+  .batch-stat.total .v { background: var(--grad-1); -webkit-background-clip: text; -webkit-text-fill-color: transparent; background-clip: text; }
+
+  /* ===== CALCULATOR ===== */
+  .calc-card {
+    background: var(--card-elev); border-radius: 16px; padding: 22px;
+    border: 1px solid var(--border); margin-bottom: 18px;
+  }
+  .calc-card .row-slider { display: flex; align-items: center; gap: 16px; padding: 12px 0; border-bottom: 1px solid var(--border); }
+  .calc-card .row-slider:last-child { border-bottom: none; }
+  .calc-card .row-slider label { flex: 1; }
+  .calc-card .row-slider .title { font-size: 14px; font-weight: 600; }
+  .calc-card .row-slider .price { font-size: 11px; color: var(--muted); margin-top: 2px; }
+  .calc-card input[type=range] {
+    flex: 2; -webkit-appearance: none; appearance: none;
+    height: 6px; background: rgba(255,255,255,0.08); border-radius: 999px; outline: none;
+  }
+  .calc-card input[type=range]::-webkit-slider-thumb {
+    -webkit-appearance: none; appearance: none;
+    width: 20px; height: 20px; border-radius: 50%;
+    background: var(--grad-1); cursor: pointer;
+    box-shadow: 0 0 14px var(--purple-glow); border: 2px solid white;
+  }
+  .calc-card input[type=range]::-moz-range-thumb {
+    width: 20px; height: 20px; border-radius: 50%;
+    background: #a855f7; cursor: pointer;
+    box-shadow: 0 0 14px var(--purple-glow); border: 2px solid white;
+  }
+  .calc-card .count { min-width: 36px; font-size: 22px; font-weight: 800; text-align: center;
+    background: var(--grad-1); -webkit-background-clip: text; -webkit-text-fill-color: transparent; background-clip: text; }
+  .calc-output { display: grid; grid-template-columns: repeat(auto-fit, minmax(180px, 1fr)); gap: 12px; margin-top: 20px; }
+  .calc-out-card {
+    background: var(--card); border: 1px solid var(--border); border-radius: 14px;
+    padding: 16px 20px; text-align: center;
+  }
+  .calc-out-card .label { font-size: 10px; text-transform: uppercase; color: var(--muted); letter-spacing: 0.08em; font-weight: 700; }
+  .calc-out-card .v { font-size: 28px; font-weight: 800; margin-top: 6px; }
+  .calc-out-card.monthly .v { background: var(--grad-1); -webkit-background-clip: text; -webkit-text-fill-color: transparent; background-clip: text; }
+  .calc-out-card.annual .v { background: var(--grad-green); -webkit-background-clip: text; -webkit-text-fill-color: transparent; background-clip: text; }
+  .calc-out-card.delta .v { background: var(--grad-2); -webkit-background-clip: text; -webkit-text-fill-color: transparent; background-clip: text; }
+
+  /* ===== ROADMAP / GANTT ===== */
+  .gantt-wrap {
+    background: var(--card-elev); border: 1px solid var(--border);
+    border-radius: 14px; padding: 18px; margin-bottom: 18px; overflow-x: auto;
+  }
+  .gantt-grid {
+    display: grid; grid-template-columns: 130px repeat(12, minmax(70px, 1fr));
+    gap: 4px; min-width: 1000px;
+  }
+  .gantt-header {
+    font-size: 10px; text-transform: uppercase; letter-spacing: 0.08em;
+    color: var(--muted); font-weight: 700; text-align: center;
+    padding: 8px 4px; border-bottom: 1px solid var(--border);
+  }
+  .gantt-header.first { grid-column: 1; text-align: left; }
+  .gantt-track-label {
+    grid-column: 1; font-size: 12px; font-weight: 600; color: var(--muted);
+    padding: 14px 8px; display: flex; align-items: center;
+  }
+  .gantt-bar {
+    background: var(--grad-1); border-radius: 8px; padding: 6px 10px;
+    font-size: 11px; font-weight: 600; color: white; margin: 6px 0; cursor: pointer;
+    box-shadow: 0 4px 14px rgba(168,85,247,0.4); transition: all 0.2s;
+    overflow: hidden; text-overflow: ellipsis; white-space: nowrap;
+    display: flex; align-items: center; gap: 6px;
+  }
+  .gantt-bar:hover { transform: translateY(-1px); box-shadow: 0 8px 22px rgba(168,85,247,0.6); }
+  .gantt-bar.done { background: var(--grad-green); box-shadow: 0 4px 14px var(--green-glow); }
+  .gantt-bar.tentative { background: rgba(255,255,255,0.08); border: 1px dashed var(--dim); color: var(--muted); box-shadow: none; }
+  .gantt-bar.color-pink { background: var(--grad-2); }
+  .gantt-bar.color-cyan { background: var(--grad-3); }
+
+  .milestone-grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(280px, 1fr)); gap: 14px; }
+  .milestone-card {
+    background: var(--card-elev); border: 1px solid var(--border);
+    border-radius: 14px; padding: 16px; transition: all 0.2s;
+  }
+  .milestone-card:hover { border-color: var(--border-hi); }
+  .milestone-card.done { background: linear-gradient(135deg, rgba(16,185,129,0.1), rgba(6,182,212,0.04)), var(--card-elev); border-color: rgba(16,185,129,0.4); }
+  .milestone-card .ph { font-size: 10px; text-transform: uppercase; letter-spacing: 0.1em; color: var(--accent-2); font-weight: 700; }
+  .milestone-card .ttl { font-size: 14px; font-weight: 700; margin: 6px 0 8px; }
+  .milestone-card .desc { font-size: 12px; color: var(--muted); margin-bottom: 10px; }
+
+  /* ===== SKU TABLE ===== */
+  .sku-table {
+    display: grid; grid-template-columns: 2fr 1fr 1fr 1fr 1fr 1fr 30px;
+    gap: 10px; align-items: center; padding: 10px 0; border-bottom: 1px solid var(--border);
+  }
+  .sku-table.head {
+    font-size: 10px; text-transform: uppercase; letter-spacing: 0.06em;
+    color: var(--muted); font-weight: 700; padding-bottom: 10px; border-bottom: 2px solid var(--border-hi);
+  }
+
+  /* ===== TASKS ===== */
+  .task-group {
+    margin-bottom: 18px; background: rgba(255,255,255,0.02);
+    border-radius: 12px; padding: 14px 16px; border: 1px solid var(--border);
+  }
+  .task-group h3 {
+    font-size: 11px; text-transform: uppercase; color: var(--accent-2);
+    letter-spacing: 0.1em; font-weight: 700; margin-bottom: 10px;
+  }
+
+  /* ===== TURNOVER ===== */
+  .turnover-grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(180px, 1fr)); gap: 14px; margin-bottom: 22px; }
+  .tn-card { background: var(--card); border: 1px solid var(--border); border-radius: 16px; padding: 22px; transition: all 0.3s; position: relative; overflow: hidden; }
+  .tn-card::before { content: ''; position: absolute; top: 0; left: 0; right: 0; height: 2px; opacity: 0.7; }
+  .tn-card:hover { transform: translateY(-2px); border-color: var(--border-hi); }
+  .tn-card .label { font-size: 10px; text-transform: uppercase; letter-spacing: 0.1em; color: var(--muted); font-weight: 700; }
+  .tn-card .v { font-size: 28px; font-weight: 800; margin-top: 8px; }
+  .tn-card.v1::before { background: var(--grad-1); } .tn-card.v1 .v { background: var(--grad-1); -webkit-background-clip: text; -webkit-text-fill-color: transparent; background-clip: text; }
+  .tn-card.v2::before { background: var(--grad-green); } .tn-card.v2 .v { background: var(--grad-green); -webkit-background-clip: text; -webkit-text-fill-color: transparent; background-clip: text; }
+  .tn-card.v3::before { background: var(--grad-2); } .tn-card.v3 .v { background: var(--grad-2); -webkit-background-clip: text; -webkit-text-fill-color: transparent; background-clip: text; }
+  .tn-card.v4::before { background: var(--grad-3); } .tn-card.v4 .v { background: var(--grad-3); -webkit-background-clip: text; -webkit-text-fill-color: transparent; background-clip: text; }
+
+  .top-sku-row { display: flex; align-items: center; gap: 12px; padding: 12px 0; border-bottom: 1px solid var(--border); }
+  .top-sku-row:last-child { border-bottom: none; }
+  .top-sku-row .name { flex: 1; font-weight: 600; font-size: 13px; }
+  .top-sku-row .bar { flex: 2; height: 8px; background: rgba(255,255,255,0.06); border-radius: 999px; overflow: hidden; }
+  .top-sku-row .bar-fill { height: 100%; border-radius: 999px; box-shadow: 0 0 8px currentColor; }
+  .top-sku-row .amt {
+    font-size: 13px; font-weight: 700; min-width: 80px; text-align: right;
+    background: var(--grad-3); -webkit-background-clip: text; -webkit-text-fill-color: transparent; background-clip: text;
+  }
+
+  /* ===== CHART CONTAINERS ===== */
+  .chart-wrap { background: var(--card-elev); border-radius: 14px; padding: 18px; position: relative; }
+
+  /* ===== ACTIVITY ===== */
+  .activity { display: grid; grid-template-columns: 1fr 1fr; gap: 14px; }
+  @media (max-width: 900px) { .activity { grid-template-columns: 1fr; } .calc-grid { grid-template-columns: 1.5fr 1fr 1fr 1fr 30px; font-size: 12px; } }
+  .activity-col { background: var(--card-elev); border-radius: 14px; padding: 16px 18px; border: 1px solid var(--border); }
+  .activity-col h3 { font-size: 11px; text-transform: uppercase; letter-spacing: 0.1em; color: var(--accent-2); font-weight: 700; margin-bottom: 10px; }
+  .activity-item { display: flex; align-items: center; gap: 10px; padding: 9px 0; border-bottom: 1px solid var(--border); font-size: 13px; }
+  .activity-item:last-child { border-bottom: none; }
+  .activity-item .icon { width: 22px; height: 22px; border-radius: 6px; display: flex; align-items: center; justify-content: center; flex-shrink: 0; font-size: 12px; }
+  .activity-item.done .icon { background: rgba(16,185,129,0.2); color: #34d399; }
+  .activity-item.pending .icon { background: rgba(245,158,11,0.2); color: #fbbf24; }
+  .activity-item .grow { flex: 1; }
+  .activity-item .meta { font-size: 11px; color: var(--muted); margin-top: 2px; }
+
+  /* ===== GLANCE GRID ===== */
+  .glance-grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(280px, 1fr)); gap: 14px; }
+  .glance-card {
+    background: var(--card-elev); border: 1px solid var(--border); border-radius: 14px;
+    padding: 16px 18px; transition: all 0.25s;
+  }
+  .glance-card:hover { border-color: var(--border-hi); transform: translateY(-2px); }
+  .glance-card .glance-head {
+    display: flex; justify-content: space-between; align-items: center; margin-bottom: 12px;
+  }
+  .glance-card .glance-title {
+    font-size: 12px; text-transform: uppercase; letter-spacing: 0.08em;
+    color: var(--muted); font-weight: 700; display: flex; align-items: center; gap: 8px;
+  }
+  .glance-card .glance-title .dot { width: 8px; height: 8px; border-radius: 50%; background: var(--accent); box-shadow: 0 0 8px currentColor; color: var(--accent); }
+  .glance-card .glance-title.cyan .dot { background: var(--accent-2); color: var(--accent-2); }
+  .glance-card .glance-title.pink .dot { background: var(--accent-3); color: var(--accent-3); }
+  .glance-card .glance-title.green .dot { background: var(--green); color: var(--green); }
+  .glance-card .glance-link {
+    font-size: 11px; color: var(--accent-2); cursor: pointer; font-weight: 600;
+    transition: color 0.15s;
+  }
+  .glance-card .glance-link:hover { color: var(--text); }
+  .glance-mini-stats { display: grid; grid-template-columns: repeat(4, 1fr); gap: 6px; margin-bottom: 12px; }
+  .glance-mini-stat { background: rgba(255,255,255,0.03); border-radius: 8px; padding: 8px; text-align: center; }
+  .glance-mini-stat .l { font-size: 9px; color: var(--muted); text-transform: uppercase; letter-spacing: 0.06em; font-weight: 700; }
+  .glance-mini-stat .v { font-size: 16px; font-weight: 800; margin-top: 2px; }
+  .glance-mini-stat.done .v { color: #34d399; }
+  .glance-mini-stat.track .v { color: #fbbf24; }
+  .glance-mini-stat.pending .v { color: #f87171; }
+  .glance-mini-stat.closed .v { color: #c084fc; }
+  .glance-list-item {
+    display: flex; align-items: center; gap: 8px; padding: 6px 0; font-size: 12px;
+    border-bottom: 1px solid var(--border);
+  }
+  .glance-list-item:last-child { border-bottom: none; }
+  .glance-list-item .label { flex: 1; color: var(--text); }
+  .glance-list-item .meta { font-size: 10px; color: var(--muted); }
+  .glance-progress { display: flex; align-items: center; gap: 10px; margin-top: 8px; }
+  .glance-progress .bar { flex: 1; height: 6px; background: rgba(255,255,255,0.06); border-radius: 999px; overflow: hidden; }
+  .glance-progress .fill { height: 100%; background: var(--grad-1); box-shadow: 0 0 8px var(--purple-glow); transition: width 0.5s; }
+  .glance-progress .pct { font-size: 12px; font-weight: 700; min-width: 40px; text-align: right; color: var(--accent-2); }
+
+  /* ===== MISC ===== */
+  .delete-x { color: var(--dim); cursor: pointer; font-size: 18px; padding: 0 6px; user-select: none; transition: all 0.15s; }
+  .delete-x:hover { color: var(--red); transform: scale(1.2); }
+  .small-note {
+    color: var(--muted); font-size: 11px; font-style: italic; margin-top: 8px;
+    padding: 8px 12px; background: rgba(255,255,255,0.02); border-radius: 8px;
+    border-left: 3px solid var(--accent-2);
+  }
+  .info-tile { background: var(--card-elev); border: 1px solid var(--border); border-radius: 12px; padding: 14px 16px; }
+  .info-tile .label { font-size: 10px; text-transform: uppercase; color: var(--muted); letter-spacing: 0.08em; font-weight: 700; margin-bottom: 4px; }
+  .info-tile .val { font-size: 16px; font-weight: 700; }
+  .retail-grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(200px, 1fr)); gap: 12px; margin-bottom: 14px; }
+
+  /* ===== BACKUP FUND ===== */
+  .backup-card { text-align: center; padding: 24px; background: var(--card-elev); border-radius: 14px; border: 1px solid var(--border); }
+  .backup-card .big { font-size: 40px; font-weight: 800; background: var(--grad-1); -webkit-background-clip: text; -webkit-text-fill-color: transparent; background-clip: text; letter-spacing: -0.02em; }
+  .backup-card .months-info { font-size: 13px; color: var(--muted); margin-top: 6px; }
+  .input-group { display: flex; gap: 16px; flex-wrap: wrap; justify-content: center; margin-top: 18px; }
+  .input-group label { display: flex; flex-direction: column; gap: 6px; font-size: 10px; color: var(--muted); text-transform: uppercase; font-weight: 700; letter-spacing: 0.06em; }
+  .input-group input {
+    border: 1px solid var(--border); background: rgba(255,255,255,0.03);
+    padding: 10px 14px; border-radius: 10px; font-size: 14px; text-align: center; width: 150px;
+    color: var(--text); font-family: inherit;
+  }
+  .input-group input:focus { border-color: var(--accent); outline: none; }
+
+  footer { margin-top: 30px; padding: 18px; text-align: center; color: var(--muted); font-size: 12px; }
+  .save-status { display: inline-flex; align-items: center; gap: 8px; padding: 6px 14px; background: rgba(16,185,129,0.08); border: 1px solid rgba(16,185,129,0.2); border-radius: 999px; }
+  .save-status .dot { width: 8px; height: 8px; border-radius: 50%; background: var(--green); box-shadow: 0 0 10px var(--green-glow); animation: pulse 2s infinite; }
+
+  /* mobile */
+  @media (max-width: 720px) {
+    body { padding: 14px; }
+    header { flex-direction: column; align-items: flex-start; }
+    .brand h1 { font-size: 22px; }
+    .hero .big { font-size: 38px; }
+    .horizon { grid-template-columns: 1fr; }
+    .funnel { grid-template-columns: repeat(2, 1fr); }
+    .batch-stats { grid-template-columns: repeat(2, 1fr); }
+    .row { flex-wrap: wrap; }
+    .gantt-wrap { padding: 12px; }
+    .calc-grid { grid-template-columns: 1.5fr 1fr 1fr 1fr 30px; }
+    .sku-table { grid-template-columns: 2fr 1fr 1fr 30px; }
+    .sku-table .hide-mobile { display: none; }
+    .batch-row { grid-template-columns: 60px 1fr 60px 100px 30px; }
+    .batch-row .hide-mobile { display: none; }
+  }
+</style>
+</head>
+<body>
+
+<header>
+  <div class="brand">
+    <div class="logo">P</div>
+    <div>
+      <h1>PRX Attire</h1>
+      <div class="tag">Production · Wholesale · Retail</div>
+    </div>
+  </div>
+  <div class="header-right">
+    <div class="health-badge good" id="health-badge"><span style="width:8px;height:8px;border-radius:50%;background:currentColor;box-shadow:0 0 8px currentColor;"></span><span id="health-text">On track</span></div>
+    <div class="sync-pill" id="sync-pill"><span class="dot"></span><span id="sync-text">Connecting…</span></div>
+    <div class="month-selector"><label>Viewing</label><select id="month-selector"></select></div>
+  </div>
+</header>
+
+<div class="tabs" id="tabs">
+  <button class="tab active" data-tab="overview">🎯 Overview</button>
+  <button class="tab" data-tab="turnover">💰 Turnover</button>
+  <button class="tab" data-tab="month">📅 This Month</button>
+  <button class="tab" data-tab="production">📦 Production</button>
+  <button class="tab" data-tab="clients">👥 Clients</button>
+  <button class="tab" data-tab="calculator">🧮 Calculator</button>
+  <button class="tab" data-tab="tasks">✅ Tasks</button>
+  <button class="tab" data-tab="roadmap">🗺️ Roadmap</button>
+  <button class="tab" data-tab="setup">⚙️ Setup</button>
+</div>
+
+<!-- ===== OVERVIEW ===== -->
+<div class="tab-content active" id="tab-overview">
+  <div class="hero">
+    <div class="label" id="hero-label">Projecting forward</div>
+    <div class="big" id="hero-num">₹0</div>
+    <div class="sub" id="hero-sub">Loading your data from the cloud…</div>
+  </div>
+  <div class="horizon" id="horizon"></div>
+  <div class="card-section">
+    <div class="card-head"><div><h2><span class="ico">📈</span> Monthly Breakdown</h2><div class="desc">Cost vs Profit · May 2026 → Apr 2027</div></div></div>
+    <div class="chart-wrap" style="height: 260px;"><canvas id="monthlyChart"></canvas></div>
+  </div>
+  <div class="card-section">
+    <div class="card-head"><h2><span class="ico cyan">🎯</span> Progress Toward Goals</h2></div>
+    <div class="rings" id="rings"></div>
+  </div>
+  <div class="card-section">
+    <div class="card-head"><div><h2><span class="ico cyan">⚡</span> At a glance</h2><div class="desc">Live summaries from every tab · one place, no clicking around</div></div></div>
+    <div class="glance-grid" id="glance-grid"></div>
+  </div>
+  <div class="card-section">
+    <div class="card-head"><h2><span class="ico pink">📰</span> Activity Feed</h2></div>
+    <div class="activity" id="activity"></div>
+  </div>
+</div>
+
+<!-- ===== TURNOVER ===== -->
+<div class="tab-content" id="tab-turnover">
+  <div class="hero">
+    <div class="label">Lifetime Turnover</div>
+    <div class="big" id="turnover-big">₹0</div>
+    <div class="sub" id="turnover-sub">Total profit across all done batches and active clients since launch.</div>
+  </div>
+  <div class="turnover-grid" id="turnover-grid"></div>
+  <div class="card-section">
+    <div class="card-head"><div><h2><span class="ico fire">🏆</span> Top SKUs by Profit</h2><div class="desc">Computed from done batches</div></div></div>
+    <div id="top-skus"></div>
+  </div>
+  <div class="card-section">
+    <div class="card-head"><h2><span class="ico cyan">🥧</span> Revenue Split</h2></div>
+    <div class="chart-wrap" style="height: 280px;"><canvas id="splitChart"></canvas></div>
+  </div>
+</div>
+
+<!-- ===== THIS MONTH ===== -->
+<div class="tab-content" id="tab-month">
+  <div class="kpi-strip" id="kpi-strip"></div>
+  <div class="card-section">
+    <div class="card-head"><h2><span class="ico">📅</span> Pick a month</h2></div>
+    <div class="calendar-strip" id="calendar-strip"></div>
+    <div id="month-detail-wrap"></div>
+  </div>
+  <div class="card-section">
+    <div class="card-head"><h2><span class="ico cyan">📦</span> Batches in this month</h2></div>
+    <div id="month-batches"></div>
+  </div>
+</div>
+
+<!-- ===== PRODUCTION ===== -->
+<div class="tab-content" id="tab-production">
+  <div class="card-section">
+    <div class="card-head"><div><h2><span class="ico">📦</span> Production Batches</h2><div class="desc" id="batch-count">0 total</div></div></div>
+    <div class="batch-stats" id="batch-stats"></div>
+    <div class="progress-bar" style="margin-bottom: 18px;"><div class="progress-bar-fill green" id="batch-progress"></div></div>
+    <div class="batch-row head">
+      <div>Batch</div><div>SKU</div><div>Qty</div><div>Manufacturer</div><div>Dates</div><div>Status</div><div></div>
+    </div>
+    <div id="batch-list"></div>
+    <button class="btn btn-sm add-row-btn" onclick="addBatch()">+ Add batch</button>
+  </div>
+
+  <div class="card-section">
+    <div class="card-head"><div><h2><span class="ico pink">📊</span> Per-SKU Profit</h2><div class="desc">Auto-totals from done batches</div></div></div>
+    <div class="sku-table head">
+      <div>Product</div>
+      <div class="hide-mobile">Cost ₹</div>
+      <div class="hide-mobile">Price ₹</div>
+      <div>Profit/pc</div>
+      <div>Pcs sold</div>
+      <div>Total ₹</div>
+      <div></div>
+    </div>
+    <div id="sku-list"></div>
+    <button class="btn btn-sm add-row-btn" onclick="addSku()">+ Add product</button>
+  </div>
+</div>
+
+<!-- ===== CLIENTS ===== -->
+<div class="tab-content" id="tab-clients">
+  <div class="card-section">
+    <div class="card-head"><h2><span class="ico cyan">👥</span> Active Clients</h2></div>
+    <div id="active-clients-list"></div>
+  </div>
+  <div class="card-section">
+    <div class="card-head"><div><h2><span class="ico">🎯</span> Pipeline</h2><div class="desc">In talks → closed shows calc</div></div></div>
+    <div id="pipeline-list"></div>
+    <button class="btn btn-sm add-row-btn" onclick="addPipelineClient()">+ Add pipeline client</button>
+  </div>
+  <div class="card-section">
+    <div class="card-head"><div><h2><span class="ico fire">📦</span> Prism Wholesale</h2><div class="desc">Target: 12 closed clients · ₹30K/wk</div></div></div>
+    <div class="funnel" id="wholesale-funnel"></div>
+    <div class="progress-bar"><div class="progress-bar-fill green" id="wholesale-progress"></div></div>
+    <div class="small-note" id="wholesale-progress-text"></div>
+    <h3 style="font-size:11px;text-transform:uppercase;letter-spacing:0.08em;color:var(--muted);font-weight:700;margin:16px 0 10px;">Leads (closed shows calc)</h3>
+    <div id="wholesale-leads-list"></div>
+    <button class="btn btn-sm add-row-btn" onclick="addWholesaleLead()">+ Add lead</button>
+  </div>
+  <div class="card-section">
+    <div class="card-head"><div><h2><span class="ico pink">🛍️</span> Prism Retail</h2><div class="desc">Gym wear product line</div></div></div>
+    <div id="retail-content"></div>
+  </div>
+</div>
+
+<!-- ===== CALCULATOR ===== -->
+<div class="tab-content" id="tab-calculator">
+  <div class="hero">
+    <div class="label">What-if Calculator</div>
+    <div class="big" id="calc-big-out">₹0</div>
+    <div class="sub">Move the sliders to project monthly profit. Includes profit from your currently active and closed clients on top.</div>
+  </div>
+  <div class="calc-card">
+    <div class="row-slider">
+      <label><div class="title">Large clients</div><div class="price">Like Young Wear · ~₹7L profit each</div></label>
+      <input type="range" min="0" max="8" value="1" step="1" id="slide-large" />
+      <div class="count" id="count-large">1</div>
+    </div>
+    <div class="row-slider">
+      <label><div class="title">Medium clients</div><div class="price">~₹1.5L profit each</div></label>
+      <input type="range" min="0" max="12" value="0" step="1" id="slide-med" />
+      <div class="count" id="count-med">0</div>
+    </div>
+    <div class="row-slider">
+      <label><div class="title">Small clients</div><div class="price">~₹50K profit each</div></label>
+      <input type="range" min="0" max="25" value="0" step="1" id="slide-small" />
+      <div class="count" id="count-small">0</div>
+    </div>
+    <div class="calc-output">
+      <div class="calc-out-card monthly"><div class="label">From sliders</div><div class="v" id="calc-from-sliders">₹0</div></div>
+      <div class="calc-out-card monthly"><div class="label">From current clients</div><div class="v" id="calc-from-current">₹0</div></div>
+      <div class="calc-out-card delta"><div class="label">Total monthly profit</div><div class="v" id="calc-total-monthly">₹0</div></div>
+      <div class="calc-out-card annual"><div class="label">Annual run-rate</div><div class="v" id="calc-annual">₹0</div></div>
+    </div>
+  </div>
+  <div class="card-section">
+    <div class="card-head"><div><h2><span class="ico cyan">⚙️</span> Tweak the assumptions</h2><div class="desc">Edit ₹ profit per client size</div></div></div>
+    <div style="display: grid; grid-template-columns: repeat(auto-fit, minmax(220px, 1fr)); gap: 12px;">
+      <div class="info-tile"><div class="label">Large client ₹/mo</div><input type="number" class="num" style="width:130px;font-size:14px;text-align:left;" id="val-large" /></div>
+      <div class="info-tile"><div class="label">Medium client ₹/mo</div><input type="number" class="num" style="width:130px;font-size:14px;text-align:left;" id="val-med" /></div>
+      <div class="info-tile"><div class="label">Small client ₹/mo</div><input type="number" class="num" style="width:130px;font-size:14px;text-align:left;" id="val-small" /></div>
+    </div>
+  </div>
+</div>
+
+<!-- ===== TASKS ===== -->
+<div class="tab-content" id="tab-tasks">
+  <div class="card-section">
+    <div class="card-head"><div><h2><span class="ico">✅</span> Tasks (TTD)</h2><div class="desc" id="tasks-summary">0 open</div></div></div>
+    <div id="tasks-list"></div>
+  </div>
+</div>
+
+<!-- ===== ROADMAP ===== -->
+<div class="tab-content" id="tab-roadmap">
+  <div class="card-section">
+    <div class="card-head"><h2><span class="ico cyan">🗺️</span> Timeline</h2></div>
+    <div class="gantt-wrap"><div class="gantt-grid" id="gantt-grid"></div></div>
+    <h3 style="font-size:11px;text-transform:uppercase;letter-spacing:0.1em;color:var(--accent-2);font-weight:700;margin:18px 0 12px;">Milestones (click to edit)</h3>
+    <div class="milestone-grid" id="milestone-grid"></div>
+    <button class="btn btn-sm add-row-btn" onclick="addMilestone()">+ Add milestone</button>
+  </div>
+</div>
+
+<!-- ===== SETUP ===== -->
+<div class="tab-content" id="tab-setup">
+  <div class="card-section">
+    <div class="card-head"><div><h2><span class="ico">🏢</span> Company Setup</h2><div class="desc" id="setup-summary">0/0 done</div></div></div>
+    <div id="setup-list"></div>
+    <button class="btn btn-sm add-row-btn" onclick="addSetupItem()">+ Add item</button>
+  </div>
+  <div class="card-section">
+    <div class="card-head"><div><h2><span class="ico cyan">💰</span> Backup Fund</h2><div class="desc">Months of burn covered</div></div></div>
+    <div class="backup-card">
+      <div class="big" id="backup-saved">₹0</div>
+      <div class="months-info" id="backup-months">covers 0 months</div>
+      <div class="progress-bar" style="max-width:420px;margin:18px auto;"><div class="progress-bar-fill" id="backup-progress"></div></div>
+      <div class="input-group">
+        <label>Target (₹)<input type="number" id="backup-target" /></label>
+        <label>Saved so far (₹)<input type="number" id="backup-saved-input" /></label>
+      </div>
+    </div>
+  </div>
+</div>
+
+<footer>
+  <div class="save-status"><span class="dot"></span>Auto-saved · <span id="last-saved" style="color:var(--text);font-weight:600;margin-left:4px;">just now</span></div>
+  <div style="margin-top:14px;"><button class="btn btn-sm btn-danger" onclick="if(confirm('Reset all data to defaults? Cloud data will be wiped.')) resetAll()">Reset to defaults</button></div>
+</footer>
+
+<script>
+// ============================================
+// MONTHS
+// ============================================
+const MONTHS = ["May 2026","Jun 2026","Jul 2026","Aug 2026","Sep 2026","Oct 2026","Nov 2026","Dec 2026","Jan 2027","Feb 2027","Mar 2027","Apr 2027"];
+
+function defaultMonthItems(idx) {
+  if (idx === 0) return [
+    { name: "Hilite (virtual office + cabin deposit)", amount: 15500, tentative: false },
+    { name: "CA setup (papers + DSC + GST)", amount: 24500, tentative: false },
+    { name: "Accommodation deposit", amount: 40000, tentative: false },
+    { name: "Personal expenses", amount: 10000, tentative: false },
+    { name: "Office rent (1 chair)", amount: 7000, tentative: false },
+    { name: "Salary (Staff 1)", amount: 15000, tentative: false }
+  ];
+  if (idx === 1) return [
+    { name: "CA monthly", amount: 12000, tentative: false },
+    { name: "Accommodation rent", amount: 19000, tentative: false },
+    { name: "Personal expenses", amount: 10000, tentative: false },
+    { name: "Office rent (2 chairs)", amount: 14000, tentative: false },
+    { name: "Salary (Staff 1)", amount: 15000, tentative: false }
+  ];
+  if (idx === 2) return [
+    { name: "CA monthly", amount: 12000, tentative: false },
+    { name: "Accommodation rent", amount: 19000, tentative: false },
+    { name: "Personal expenses", amount: 10000, tentative: false },
+    { name: "Office rent — Cabin", amount: 28000, tentative: true },
+    { name: "Salary (Staff 1)", amount: 15000, tentative: false },
+    { name: "Salary (Staff 2 — wholesale)", amount: 10000, tentative: true }
+  ];
+  const base = [
+    { name: "CA monthly", amount: 12000, tentative: false },
+    { name: "Accommodation rent", amount: 19000, tentative: false },
+    { name: "Personal expenses", amount: 10000, tentative: false },
+    { name: "Office rent — Cabin", amount: 28000, tentative: false },
+    { name: "Salary (Staff 1 + 2)", amount: 25000, tentative: false }
+  ];
+  if (idx >= 4) base.push({ name: "Creative agency", amount: 15000, tentative: true });
+  return base;
+}
+
+const DEFAULT_SKUS = [
+  { name: "Basic Oversized Tee", costMin: 260, costMax: 270, priceMin: 320, priceMax: 330, profitPc: 60 },
+  { name: "Lava Oversized Tee", costMin: 330, costMax: 330, priceMin: 380, priceMax: 390, profitPc: 60 },
+  { name: "Basic Sleeveless", costMin: 220, costMax: 230, priceMin: 280, priceMax: 290, profitPc: 60 },
+  { name: "Lava Sleeveless", costMin: 300, costMax: 300, priceMin: 360, priceMax: 360, profitPc: 60 },
+  { name: "Baggy Cargo Pants", costMin: 300, costMax: 300, priceMin: 360, priceMax: 360, profitPc: 60 },
+  { name: "Mesh Jersey", costMin: 300, costMax: 300, priceMin: 385, priceMax: 385, profitPc: 85 },
+  { name: "Full Sleeve Shirt (OX)", costMin: 285, costMax: 285, priceMin: 385, priceMax: 385, profitPc: 100 },
+  { name: "Linen Shirt", costMin: 390, costMax: 390, priceMin: 470, priceMax: 470, profitPc: 80 },
+  { name: "Hoodies", costMin: 410, costMax: 410, priceMin: 475, priceMax: 480, profitPc: 75 }
+];
+
+const DEFAULT_DATA = {
+  activeMonthIdx: 0,
+  setup: [
+    { name: "Company name: PRXattire Pvt Ltd", status: "done" },
+    { name: "Rent chair space in Hilite", status: "done" },
+    { name: "Get paper from Hilite", status: "done" },
+    { name: "Pass papers to CA + register company", status: "progress" },
+    { name: "Open HDFC bank account (waiting for CA)", status: "pending" },
+    { name: "Hire CA", status: "done" },
+    { name: "Pay 6K balance for paper work", status: "pending" },
+    { name: "Pay 6K DSC", status: "pending" },
+    { name: "Pay 2.5K GST", status: "pending" },
+    { name: "Hire Staff 1 (Production handler, 15K)", status: "progress" },
+    { name: "Hire Staff 2 (Wholesale handler, 10K) — post-July", status: "tentative" },
+    { name: "Onboard creative agency (15K) — post-August", status: "tentative" }
+  ],
+  costs: MONTHS.map((m, i) => ({ label: m, items: defaultMonthItems(i) })),
+  clients: [
+    {
+      name: "Client 1 — Young Wear", stage: "active",
+      products: [
+        { sku: "Jersey", weeklyProfit: 51000 },
+        { sku: "Lava T-Shirts", weeklyProfit: 21000 },
+        { sku: "Vest", weeklyProfit: 21000 },
+        { sku: "Cargo Pants", weeklyProfit: 15000 }
+      ],
+      mayCycles: 1,
+      note: "May = testing (1 cycle). June = full launch (4 cycles + 5,000 wholesale pcs).",
+      calcOpen: true,
+      calcLines: [
+        { sku: "Mesh Jersey", pcsMonth: 1800, profitPc: 113 },
+        { sku: "Lava Oversized Tee", pcsMonth: 1400, profitPc: 60 },
+        { sku: "Basic Sleeveless", pcsMonth: 1050, profitPc: 80 },
+        { sku: "Baggy Cargo Pants", pcsMonth: 900, profitPc: 67 },
+        { sku: "Wholesale orders", pcsMonth: 5000, profitPc: 60 }
+      ]
+    },
+    {
+      name: "Client 2 — AX Men", stage: "active",
+      products: [
+        { sku: "Henley T-Shirts", weeklyProfit: 20000 },
+        { sku: "Shirts", weeklyProfit: 34000 }
+      ],
+      mayCycles: 1,
+      note: "May = ₹54K (full month, 1 cycle). Weekly cycle from June (TBC).",
+      calcOpen: true,
+      calcLines: [
+        { sku: "Full Sleeve Shirt (OX)", pcsMonth: 340, profitPc: 100 },
+        { sku: "Linen Shirt", pcsMonth: 250, profitPc: 80 }
+      ]
+    }
+  ],
+  pipelineClients: [
+    { name: "Pipeline Client 1", stage: "in talks" },
+    { name: "Pipeline Client 2", stage: "in talks" },
+    { name: "Pipeline Client 3", stage: "in talks" },
+    { name: "Pipeline Client 4", stage: "in talks" },
+    { name: "Pipeline Client 5", stage: "in talks" }
+  ],
+  wholesaleFunnel: { leads: 0, coldCalled: 0, inTalks: 0, closed: 0, target: 12, weeklyTarget: 30000 },
+  wholesaleLeads: [],
+  retail: {
+    status: "Planning only",
+    revenue: 0,
+    note: "Gym wear products in production. Pan India expansion not planned.",
+    todos: [
+      { name: "Finalise gym wear product line", status: "progress" },
+      { name: "Decide retail launch strategy", status: "pending" }
+    ],
+    calcOpen: false,
+    calcLines: []
+  },
+  skus: DEFAULT_SKUS,
+  batches: [],
+  tasks: {
+    "Setup": [
+      { name: "Open HDFC bank account (waiting for CA)", status: "progress", owner: "You" },
+      { name: "Pay pending CA dues (6K paper + 6K DSC + 2.5K GST)", status: "pending", owner: "You" }
+    ],
+    "Hiring": [
+      { name: "Confirm Staff 2 hire (post-July)", status: "tentative", owner: "You" },
+      { name: "Plan creative agency engagement (post-August)", status: "tentative", owner: "You" }
+    ],
+    "Sales": [
+      { name: "Cold call existing client list", status: "pending", owner: "Staff 1" },
+      { name: "Run Meta lead-gen ads", status: "pending", owner: "You" },
+      { name: "Close 12 wholesale clients", status: "progress", owner: "You" },
+      { name: "Follow up new leads from ads", status: "pending", owner: "Staff 1" }
+    ],
+    "Manufacturing": [
+      { name: "Find more manufacturers", status: "pending", owner: "You" }
+    ],
+    "Zayan's Items": [
+      { name: "Full paper work", status: "done", owner: "Zayan" },
+      { name: "Company revenue design", status: "progress", owner: "Zayan" },
+      { name: "Structure: production + wholesale + retail separately?", status: "pending", owner: "Zayan" },
+      { name: "Decide backup fund (how many months)", status: "progress", owner: "Zayan" }
+    ]
+  },
+  milestones: [
+    { phase: "May 2026", title: "Testing phase", desc: "1 cycle, ₹1.62L profit (C1 + C2)", track: "production", startMonth: 0, endMonth: 0, done: false, color: "default" },
+    { phase: "June 2026", title: "Hard launch", desc: "11,350 pcs / ₹7.32L profit (C1)", track: "production", startMonth: 1, endMonth: 1, done: false, color: "default" },
+    { phase: "End July 2026", title: "Cabin + Staff 2", desc: "Cabin (28K), wholesale handler (10K)", track: "office", startMonth: 2, endMonth: 2, done: false, color: "cyan" },
+    { phase: "Aug 2026", title: "Safe target", desc: "15-20K pcs/mo, multi-lakh", track: "production", startMonth: 3, endMonth: 3, done: false, color: "default" },
+    { phase: "Aug 2026", title: "Stretch target", desc: "46K pcs/mo, ₹28-30L", track: "production", startMonth: 3, endMonth: 4, done: false, color: "pink" },
+    { phase: "Post-July", title: "Prism Wholesale live", desc: "₹30K/wk · 12 clients", track: "wholesale", startMonth: 3, endMonth: 7, done: false, color: "cyan" },
+    { phase: "Post-Aug", title: "Creative agency", desc: "Onboard at 15K/mo", track: "marketing", startMonth: 4, endMonth: 11, done: false, color: "pink" },
+    { phase: "Future", title: "Prism Retail launch", desc: "Gym wear line", track: "retail", startMonth: 6, endMonth: 11, done: false, color: "default" }
+  ],
+  backup: { target: 600000, saved: 0 },
+  calculator: { largeVal: 700000, medVal: 150000, smallVal: 50000, largeCount: 1, medCount: 0, smallCount: 0 }
+};
+
+// ============================================
+// SUPABASE
+// ============================================
+const SUPABASE_URL = "https://lksgbsjuxewybgbvwhhm.supabase.co";
+const SUPABASE_KEY = "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6Imxrc2dic2p1eGV3eWJnYnZ3aGhtIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NzgyODAyNDgsImV4cCI6MjA5Mzg1NjI0OH0.pXKu4s6yXfQRhoE7VRy6mb3NB3A5U_JeOoSLPMujV8I";
+const sb = window.supabase.createClient(SUPABASE_URL, SUPABASE_KEY);
+
+let data = JSON.parse(JSON.stringify(DEFAULT_DATA));
+let currentTab = localStorage.getItem("prx_tab") || "overview";
+let saveTimer = null;
+let lastSentAt = 0;
+let charts = {};
+
+function setSync(state, text) {
+  const pill = document.getElementById("sync-pill");
+  const txt = document.getElementById("sync-text");
+  if (!pill || !txt) return;
+  pill.classList.remove("syncing", "error", "cloud");
+  if (state === "syncing") pill.classList.add("syncing");
+  else if (state === "error") pill.classList.add("error");
+  else if (state === "cloud") pill.classList.add("cloud");
+  txt.textContent = text;
+}
+
+function migrate(d) {
+  // Ensure new v3 fields exist
+  if (!d.batches) d.batches = [];
+  if (!d.calculator) d.calculator = { largeVal: 700000, medVal: 150000, smallVal: 50000, largeCount: 1, medCount: 0, smallCount: 0 };
+  if (typeof d.activeMonthIdx !== "number") d.activeMonthIdx = 0;
+  if (!d.retail) d.retail = JSON.parse(JSON.stringify(DEFAULT_DATA.retail));
+  if (!d.retail.calcLines) d.retail.calcLines = [];
+  if (!d.skus || !d.skus.length) d.skus = JSON.parse(JSON.stringify(DEFAULT_SKUS));
+  return d;
+}
+
+async function loadFromCloud() {
+  setSync("syncing", "Loading…");
+  try {
+    const { data: row, error } = await sb.from("dashboard_state").select("data").eq("id", "main").maybeSingle();
+    if (error) throw error;
+    if (row && row.data && Object.keys(row.data).length > 0) {
+      data = migrate(row.data);
+      setSync("synced", "Live · synced");
+      return true;
+    }
+    data = JSON.parse(JSON.stringify(DEFAULT_DATA));
+    await saveImmediate();
+    return false;
+  } catch (e) {
+    console.error(e);
+    setSync("error", "Offline · local only");
+    try {
+      const local = localStorage.getItem("prx_dashboard_v3_fallback");
+      if (local) data = migrate(JSON.parse(local));
+    } catch (_) {}
+    return false;
+  }
+}
+
+async function saveImmediate() {
+  try {
+    setSync("syncing", "Saving…");
+    lastSentAt = Date.now();
+    const { error } = await sb.from("dashboard_state").update({ data, updated_at: new Date().toISOString() }).eq("id", "main");
+    if (error) throw error;
+    setSync("synced", "Live · synced");
+    localStorage.setItem("prx_dashboard_v3_fallback", JSON.stringify(data));
+    const lastSavedEl = document.getElementById("last-saved");
+    if (lastSavedEl) lastSavedEl.textContent = new Date().toLocaleTimeString();
+  } catch (e) {
+    console.error(e);
+    setSync("error", "Save failed");
+  }
+}
+
+function save() {
+  clearTimeout(saveTimer);
+  setSync("syncing", "Saving…");
+  saveTimer = setTimeout(saveImmediate, 600);
+}
+
+function subscribeToCloud() {
+  sb.channel("dashboard_state_changes")
+    .on("postgres_changes",
+      { event: "UPDATE", schema: "public", table: "dashboard_state", filter: "id=eq.main" },
+      (payload) => {
+        if (Date.now() - lastSentAt < 1500) return;
+        if (payload.new && payload.new.data) {
+          data = migrate(payload.new.data);
+          renderAll();
+          setSync("cloud", "Updated by teammate");
+          setTimeout(() => setSync("synced", "Live · synced"), 2000);
+        }
+      })
+    .subscribe();
+}
+
+async function resetAll() {
+  data = JSON.parse(JSON.stringify(DEFAULT_DATA));
+  await saveImmediate();
+  renderAll();
+}
+
+// ============================================
+// HELPERS
+// ============================================
+function fmt(n) {
+  if (typeof n !== "number" || isNaN(n)) return "₹0";
+  return "₹" + Math.round(n).toLocaleString("en-IN");
+}
+function fmtCompact(n) {
+  if (typeof n !== "number" || isNaN(n)) return "₹0";
+  if (n >= 10000000) return "₹" + (n / 10000000).toFixed(2) + "Cr";
+  if (n >= 100000) return "₹" + (n / 100000).toFixed(2) + "L";
+  if (n >= 1000) return "₹" + (n / 1000).toFixed(1) + "K";
+  return "₹" + Math.round(n).toLocaleString("en-IN");
+}
+function cycleStatus(c) { const o = ["pending", "progress", "done", "tentative"]; return o[(o.indexOf(c) + 1) % o.length]; }
+function cycleStage(c) { const o = ["lead", "cold called", "in talks", "closed"]; return o[(o.indexOf(c) + 1) % o.length]; }
+function cycleBatchStatus(c) { const o = ["pending", "in track", "done"]; return o[(o.indexOf(c) + 1) % o.length]; }
+function stagePillClass(s) {
+  if (s === "closed") return "closed";
+  if (s === "in talks") return "intalks";
+  if (s === "cold called") return "cold";
+  if (s === "active") return "active";
+  if (s === "in track") return "intrack";
+  if (s === "done") return "done";
+  if (s === "pending") return "pending";
+  return "lead";
+}
+
+// Calculate monthly profit from all sources
+function monthlyProfitForMonth(monthIdx) {
+  let total = 0;
+  data.clients.forEach(c => {
+    if (c.calcOpen && c.calcLines && monthIdx > 0) {
+      total += c.calcLines.reduce((s, l) => s + ((Number(l.pcsMonth) || 0) * (Number(l.profitPc) || 0)), 0);
+    } else if (monthIdx === 0) {
+      const wk = (c.products || []).reduce((s, p) => s + (Number(p.weeklyProfit) || 0), 0);
+      total += wk * (c.mayCycles || 1);
+    } else {
+      const wk = (c.products || []).reduce((s, p) => s + (Number(p.weeklyProfit) || 0), 0);
+      total += wk * 4;
+    }
+  });
+  data.pipelineClients.forEach(p => {
+    if (p.stage === "closed" && p.calcLines) {
+      total += p.calcLines.reduce((s, l) => s + ((Number(l.pcsMonth) || 0) * (Number(l.profitPc) || 0)), 0);
+    }
+  });
+  data.wholesaleLeads.forEach(l => {
+    if (l.stage === "closed" && l.calcLines) {
+      total += l.calcLines.reduce((s, x) => s + ((Number(x.pcsMonth) || 0) * (Number(x.profitPc) || 0)), 0);
+    }
+  });
+  if (data.retail.calcOpen && data.retail.calcLines) {
+    total += data.retail.calcLines.reduce((s, l) => s + ((Number(l.pcsMonth) || 0) * (Number(l.profitPc) || 0)), 0);
+  }
+  return total;
+}
+function monthlyCostForMonth(idx) {
+  const m = data.costs[idx]; if (!m) return 0;
+  return (m.items || []).filter(i => !i.tentative).reduce((s, i) => s + (Number(i.amount) || 0), 0);
+}
+function pcsSoldForSku(skuName) {
+  return data.batches.filter(b => b.status === "done" && b.sku === skuName).reduce((s, b) => s + (Number(b.qty) || 0), 0);
+}
+function lifetimeProfit() {
+  return data.batches.filter(b => b.status === "done").reduce((s, b) => s + ((Number(b.qty) || 0) * (Number(b.profitPc) || 0)), 0);
+}
+function lifetimeRevenue() {
+  let total = 0;
+  data.batches.filter(b => b.status === "done").forEach(b => {
+    const sku = data.skus.find(s => s.name === b.sku);
+    if (sku) {
+      const price = (sku.priceMin + sku.priceMax) / 2;
+      total += (Number(b.qty) || 0) * price;
+    }
+  });
+  return total;
+}
+function totalPcsSold() {
+  return data.batches.filter(b => b.status === "done").reduce((s, b) => s + (Number(b.qty) || 0), 0);
+}
+
+// Health: are we on track for Aug stretch / safe target?
+function computeHealth() {
+  const aug = monthlyProfitForMonth(3);
+  const safeTarget = 1500000; // ₹15L
+  if (aug >= safeTarget) return { state: "good", text: "On track" };
+  const closed = data.wholesaleFunnel.closed + data.pipelineClients.filter(p => p.stage === "closed").length;
+  if (closed >= 6) return { state: "good", text: "On pace" };
+  if (closed >= 3) return { state: "warn", text: "Behind pace" };
+  return { state: "warn", text: "Push harder" };
+}
+
+// ============================================
+// TABS
+// ============================================
+function switchTab(name) {
+  document.querySelectorAll(".tab").forEach(t => t.classList.toggle("active", t.dataset.tab === name));
+  document.querySelectorAll(".tab-content").forEach(c => c.classList.toggle("active", c.id === "tab-" + name));
+  currentTab = name;
+  localStorage.setItem("prx_tab", name);
+  if (name === "overview") { renderHorizon(); renderRings(); renderGlance(); renderActivity(); drawMonthlyChart(); }
+  if (name === "turnover") { renderTurnover(); drawSplitChart(); }
+  if (name === "calculator") { renderCalculator(); }
+}
+document.querySelectorAll(".tab").forEach(t => t.addEventListener("click", () => switchTab(t.dataset.tab)));
+
+// ============================================
+// MONTH SELECTOR
+// ============================================
+function renderMonthSelector() {
+  const sel = document.getElementById("month-selector");
+  sel.innerHTML = MONTHS.map((m, i) => `<option value="${i}" ${i === data.activeMonthIdx ? "selected" : ""}>${m}</option>`).join("");
+  sel.onchange = (e) => { data.activeMonthIdx = Number(e.target.value); save(); renderKPIs(); renderMonthDetail(); renderHorizon(); renderHero(); };
+}
+
+// ============================================
+// HEADER: HERO / HORIZON / HEALTH
+// ============================================
+function renderHealth() {
+  const h = computeHealth();
+  const badge = document.getElementById("health-badge");
+  badge.className = "health-badge " + h.state;
+  document.getElementById("health-text").textContent = h.text;
+}
+function renderHero() {
+  const augProfit = monthlyProfitForMonth(3);
+  const targetMonth = data.activeMonthIdx >= 3 ? data.activeMonthIdx : 3;
+  const targetProfit = monthlyProfitForMonth(targetMonth);
+  document.getElementById("hero-label").textContent = `${MONTHS[targetMonth]} projection`;
+  document.getElementById("hero-num").textContent = fmtCompact(targetProfit);
+  document.getElementById("hero-sub").textContent = `Based on your current active clients, closed deals, and assumptions. Edit Clients / Calculator to refine.`;
+}
+function renderHorizon() {
+  const idx = data.activeMonthIdx;
+  const cur = monthlyProfitForMonth(idx);
+  const next = monthlyProfitForMonth(Math.min(idx + 1, 11));
+  const long = monthlyProfitForMonth(Math.min(idx + 3, 11));
+  const wrap = document.getElementById("horizon");
+  wrap.innerHTML = `
+    <div class="horizon-card now"><div class="when">${MONTHS[idx]}</div><div class="value">${fmtCompact(cur)}</div><div class="delta">Current month profit</div></div>
+    <div class="horizon-card short"><div class="when">${MONTHS[Math.min(idx + 1, 11)]}</div><div class="value">${fmtCompact(next)}</div><div class="delta">+30 days</div></div>
+    <div class="horizon-card long"><div class="when">${MONTHS[Math.min(idx + 3, 11)]}</div><div class="value">${fmtCompact(long)}</div><div class="delta">+90 days</div></div>
+  `;
+}
+function renderRings() {
+  const wrap = document.getElementById("rings");
+  if (!wrap) return;
+  const wholesaleDone = data.wholesaleFunnel.closed + data.pipelineClients.filter(p => p.stage === "closed").length;
+  const wholesalePct = Math.min(100, Math.round((wholesaleDone / 12) * 100));
+  const totalPcs = totalPcsSold();
+  const prodTarget = 20000;
+  const prodPct = Math.min(100, Math.round((totalPcs / prodTarget) * 100));
+  let tDone = 0, tAll = 0;
+  Object.values(data.tasks).forEach(g => g.forEach(t => { tAll++; if (t.status === "done") tDone++; }));
+  const tPct = tAll ? Math.round((tDone / tAll) * 100) : 0;
+  const backupPct = data.backup.target ? Math.min(100, Math.round((data.backup.saved / data.backup.target) * 100)) : 0;
+
+  const rings = [
+    { pct: wholesalePct, label: "Wholesale Clients", detail: `${wholesaleDone} of 12`, grad: ["#a855f7", "#06b6d4"] },
+    { pct: prodPct, label: "Production Target", detail: `${totalPcs.toLocaleString("en-IN")} of ${prodTarget.toLocaleString("en-IN")} pcs`, grad: ["#10b981", "#06b6d4"] },
+    { pct: tPct, label: "Tasks Done", detail: `${tDone} of ${tAll}`, grad: ["#ec4899", "#f59e0b"] },
+    { pct: backupPct, label: "Backup Fund", detail: `${fmtCompact(data.backup.saved)} of ${fmtCompact(data.backup.target)}`, grad: ["#a855f7", "#ec4899"] }
+  ];
+  const C = 345;
+  wrap.innerHTML = rings.map((r, i) => `
+    <div class="ring-card">
+      <div class="ring">
+        <svg width="130" height="130" viewBox="0 0 130 130">
+          <defs><linearGradient id="ring-grad-${i}"><stop offset="0%" stop-color="${r.grad[0]}"/><stop offset="100%" stop-color="${r.grad[1]}"/></linearGradient></defs>
+          <circle class="bg" cx="65" cy="65" r="55" stroke-width="12" fill="none"></circle>
+          <circle class="fill" cx="65" cy="65" r="55" stroke-width="12" fill="none" stroke="url(#ring-grad-${i})" stroke-dasharray="${C}" stroke-dashoffset="${C - (C * r.pct / 100)}" style="color: ${r.grad[0]};"></circle>
+        </svg>
+        <div class="pct">${r.pct}%</div>
+      </div>
+      <div class="label">${r.label}</div>
+      <div class="detail">${r.detail}</div>
+    </div>
+  `).join("");
+}
+function renderActivity() {
+  const wrap = document.getElementById("activity");
+  if (!wrap) return;
+  let done = [], pending = [];
+
+  // Completed tasks
+  Object.entries(data.tasks).forEach(([group, items]) => {
+    items.forEach(t => {
+      if (t.status === "done") done.push({ icon: "✓", text: t.name, meta: `Task · ${group}`, type: "task" });
+      else pending.push({ icon: "●", text: t.name, meta: `Task · ${group} · ${t.owner || "—"}`, type: "task" });
+    });
+  });
+
+  // Done batches
+  data.batches.filter(b => b.status === "done").forEach(b => {
+    done.push({ icon: "📦", text: `Batch #${b.id} — ${b.sku} (${b.qty} pcs)`, meta: `Production · ${b.manufacturer || "manufacturer TBC"}`, type: "batch" });
+  });
+  // In-track batches
+  data.batches.filter(b => b.status === "in track").forEach(b => {
+    pending.push({ icon: "📦", text: `Batch #${b.id} — ${b.sku} (${b.qty} pcs)`, meta: `Production · ${b.startDate || ""} → ${b.endDate || ""}`, type: "batch" });
+  });
+
+  // Closed pipeline clients
+  data.pipelineClients.filter(p => p.stage === "closed").forEach(p => {
+    const profit = (p.calcLines || []).reduce((s, l) => s + (Number(l.pcsMonth) || 0) * (Number(l.profitPc) || 0), 0);
+    done.push({ icon: "🤝", text: `Closed: ${p.name}`, meta: `Pipeline · ${fmtCompact(profit)}/mo`, type: "client" });
+  });
+  // In-talks pipeline
+  data.pipelineClients.filter(p => p.stage === "in talks").forEach(p => {
+    pending.push({ icon: "🤝", text: p.name, meta: `Pipeline · in talks`, type: "client" });
+  });
+
+  // Closed wholesale leads
+  data.wholesaleLeads.filter(l => l.stage === "closed").forEach(l => {
+    const profit = (l.calcLines || []).reduce((s, x) => s + (Number(x.pcsMonth) || 0) * (Number(x.profitPc) || 0), 0);
+    done.push({ icon: "💼", text: `Closed: ${l.name}`, meta: `Wholesale · ${fmtCompact(profit)}/mo`, type: "wholesale" });
+  });
+
+  // Done milestones
+  data.milestones.filter(m => m.done).forEach(m => {
+    done.push({ icon: "🎯", text: m.title, meta: `Milestone · ${m.phase}`, type: "milestone" });
+  });
+  // Upcoming milestones (not done, near month)
+  data.milestones.filter(m => !m.done && m.startMonth <= data.activeMonthIdx + 2).slice(0, 3).forEach(m => {
+    pending.push({ icon: "🎯", text: m.title, meta: `Milestone · ${MONTHS[m.startMonth]}`, type: "milestone" });
+  });
+
+  // Done setup items
+  data.setup.filter(s => s.status === "done").forEach(s => {
+    done.push({ icon: "🏢", text: s.name, meta: "Setup", type: "setup" });
+  });
+  // Pending setup
+  data.setup.filter(s => s.status !== "done").forEach(s => {
+    pending.push({ icon: "🏢", text: s.name, meta: `Setup · ${s.status}`, type: "setup" });
+  });
+
+  done = done.slice(0, 8);
+  pending = pending.slice(0, 8);
+  wrap.innerHTML = `
+    <div class="activity-col"><h3>✓ Recently completed</h3>
+      ${done.length ? done.map(t => `<div class="activity-item done"><span class="icon">${t.icon}</span><div class="grow">${t.text}<div class="meta">${t.meta}</div></div></div>`).join("") : `<div style="color:var(--muted);font-size:13px;padding:8px 0;">Nothing completed yet.</div>`}
+    </div>
+    <div class="activity-col"><h3>⏭ Up next</h3>
+      ${pending.length ? pending.map(t => `<div class="activity-item pending"><span class="icon">${t.icon}</span><div class="grow">${t.text}<div class="meta">${t.meta}</div></div></div>`).join("") : `<div style="color:var(--muted);font-size:13px;padding:8px 0;">All clear!</div>`}
+    </div>
+  `;
+}
+
+function renderGlance() {
+  const wrap = document.getElementById("glance-grid");
+  if (!wrap) return;
+
+  // Batches
+  const bTotal = data.batches.length;
+  const bDone = data.batches.filter(b => b.status === "done").length;
+  const bTrack = data.batches.filter(b => b.status === "in track").length;
+  const bPending = data.batches.filter(b => b.status === "pending").length;
+  const recentBatches = data.batches.slice(-3).reverse();
+
+  // Wholesale
+  const wf = data.wholesaleFunnel;
+  const wPipelineClosed = data.pipelineClients.filter(p => p.stage === "closed").length;
+  const wTotalClosed = wf.closed + wPipelineClosed;
+  const wPct = Math.min(100, Math.round((wTotalClosed / 12) * 100));
+
+  // Pipeline
+  const pInTalks = data.pipelineClients.filter(p => p.stage === "in talks").length;
+  const pClosed = data.pipelineClients.filter(p => p.stage === "closed").length;
+  const pActive = data.clients.length;
+
+  // Setup
+  const sDone = data.setup.filter(s => s.status === "done").length;
+  const sTotal = data.setup.length;
+  const sPct = sTotal ? Math.round((sDone / sTotal) * 100) : 0;
+  const sPending = data.setup.filter(s => s.status === "pending").slice(0, 3);
+
+  // Milestones
+  const mDone = data.milestones.filter(m => m.done).length;
+  const mTotal = data.milestones.length;
+  const mNext = data.milestones.find(m => !m.done);
+
+  // This month costs
+  const idx = data.activeMonthIdx;
+  const monthCost = monthlyCostForMonth(idx);
+  const tentativeCount = (data.costs[idx]?.items || []).filter(i => i.tentative).length;
+
+  wrap.innerHTML = `
+    <div class="glance-card">
+      <div class="glance-head">
+        <div class="glance-title cyan"><span class="dot"></span>Production Batches</div>
+        <span class="glance-link" onclick="switchTab('production')">View all →</span>
+      </div>
+      <div class="glance-mini-stats">
+        <div class="glance-mini-stat"><div class="l">Total</div><div class="v">${bTotal}</div></div>
+        <div class="glance-mini-stat done"><div class="l">Done</div><div class="v">${bDone}</div></div>
+        <div class="glance-mini-stat track"><div class="l">In track</div><div class="v">${bTrack}</div></div>
+        <div class="glance-mini-stat pending"><div class="l">Pending</div><div class="v">${bPending}</div></div>
+      </div>
+      ${recentBatches.length ? recentBatches.map(b => `<div class="glance-list-item"><span class="label">#${b.id} · ${b.sku} (${b.qty})</span><span class="pill ${stagePillClass(b.status)}" style="padding:2px 8px;font-size:9px;">${b.status}</span></div>`).join("") : '<div style="font-size:12px;color:var(--muted);padding:6px 0;">No batches yet — add some in Production tab.</div>'}
+    </div>
+
+    <div class="glance-card">
+      <div class="glance-head">
+        <div class="glance-title pink"><span class="dot"></span>Wholesale Funnel</div>
+        <span class="glance-link" onclick="switchTab('clients')">View all →</span>
+      </div>
+      <div class="glance-mini-stats">
+        <div class="glance-mini-stat"><div class="l">Leads</div><div class="v">${wf.leads}</div></div>
+        <div class="glance-mini-stat track"><div class="l">Talks</div><div class="v">${wf.inTalks}</div></div>
+        <div class="glance-mini-stat closed"><div class="l">Closed</div><div class="v">${wTotalClosed}</div></div>
+        <div class="glance-mini-stat"><div class="l">Target</div><div class="v">12</div></div>
+      </div>
+      <div class="glance-progress">
+        <div class="bar"><div class="fill" style="width:${wPct}%;"></div></div>
+        <span class="pct">${wPct}%</span>
+      </div>
+      <div style="font-size:11px;color:var(--muted);margin-top:6px;">${wTotalClosed} of 12 closed · ${fmtCompact(wf.weeklyTarget)}/wk target</div>
+    </div>
+
+    <div class="glance-card">
+      <div class="glance-head">
+        <div class="glance-title green"><span class="dot"></span>Pipeline & Clients</div>
+        <span class="glance-link" onclick="switchTab('clients')">View all →</span>
+      </div>
+      <div class="glance-mini-stats">
+        <div class="glance-mini-stat done"><div class="l">Active</div><div class="v">${pActive}</div></div>
+        <div class="glance-mini-stat track"><div class="l">In talks</div><div class="v">${pInTalks}</div></div>
+        <div class="glance-mini-stat closed"><div class="l">Closed</div><div class="v">${pClosed}</div></div>
+        <div class="glance-mini-stat"><div class="l">Total</div><div class="v">${pActive + pInTalks + pClosed}</div></div>
+      </div>
+      ${data.clients.slice(0, 2).map(c => `<div class="glance-list-item"><span class="label">${c.name}</span><span class="pill ${stagePillClass(c.stage)}" style="padding:2px 8px;font-size:9px;">${c.stage}</span></div>`).join("")}
+      ${pClosed ? data.pipelineClients.filter(p => p.stage === "closed").slice(0, 2).map(p => `<div class="glance-list-item"><span class="label">${p.name}</span><span class="pill closed" style="padding:2px 8px;font-size:9px;">closed</span></div>`).join("") : ""}
+    </div>
+
+    <div class="glance-card">
+      <div class="glance-head">
+        <div class="glance-title"><span class="dot"></span>Setup Progress</div>
+        <span class="glance-link" onclick="switchTab('setup')">View all →</span>
+      </div>
+      <div style="font-size: 26px; font-weight: 800; background: var(--grad-1); -webkit-background-clip: text; background-clip: text; -webkit-text-fill-color: transparent; margin-bottom: 8px;">${sDone} / ${sTotal} <span style="font-size:13px;color:var(--muted);font-weight:600;">items done</span></div>
+      <div class="glance-progress">
+        <div class="bar"><div class="fill" style="width:${sPct}%;"></div></div>
+        <span class="pct">${sPct}%</span>
+      </div>
+      <div style="font-size: 11px; color: var(--muted); margin-top: 10px; text-transform: uppercase; letter-spacing: 0.06em; font-weight: 700;">Pending</div>
+      ${sPending.length ? sPending.map(s => `<div class="glance-list-item"><span class="label">${s.name}</span><span class="pill pending" style="padding:2px 8px;font-size:9px;">${s.status}</span></div>`).join("") : '<div style="font-size:12px;color:var(--muted);padding:6px 0;">All setup done!</div>'}
+    </div>
+
+    <div class="glance-card">
+      <div class="glance-head">
+        <div class="glance-title cyan"><span class="dot"></span>Milestones</div>
+        <span class="glance-link" onclick="switchTab('roadmap')">View all →</span>
+      </div>
+      <div style="font-size: 26px; font-weight: 800; background: var(--grad-3); -webkit-background-clip: text; background-clip: text; -webkit-text-fill-color: transparent; margin-bottom: 8px;">${mDone} / ${mTotal} <span style="font-size:13px;color:var(--muted);font-weight:600;">hit</span></div>
+      ${mNext ? `<div style="font-size:11px;color:var(--muted);text-transform:uppercase;letter-spacing:0.06em;font-weight:700;margin-top:6px;">Next up</div><div class="glance-list-item"><span class="label">${mNext.title}</span><span class="meta">${mNext.phase}</span></div>` : '<div style="font-size:12px;color:var(--muted);padding:6px 0;">All milestones hit!</div>'}
+    </div>
+
+    <div class="glance-card">
+      <div class="glance-head">
+        <div class="glance-title pink"><span class="dot"></span>${MONTHS[idx]} Costs</div>
+        <span class="glance-link" onclick="switchTab('month')">View all →</span>
+      </div>
+      <div style="font-size: 26px; font-weight: 800; background: var(--grad-fire); -webkit-background-clip: text; background-clip: text; -webkit-text-fill-color: transparent; margin-bottom: 8px;">${fmtCompact(monthCost)}</div>
+      <div style="font-size: 12px; color: var(--muted); margin-bottom: 8px;">${(data.costs[idx]?.items || []).length} cost lines · ${tentativeCount} tentative</div>
+      ${(data.costs[idx]?.items || []).filter(i => !i.tentative).slice(0, 3).map(i => `<div class="glance-list-item"><span class="label">${i.name}</span><span class="meta">${fmtCompact(Number(i.amount) || 0)}</span></div>`).join("")}
+    </div>
+  `;
+}
+
+// ============================================
+// KPI STRIP (This Month)
+// ============================================
+function renderKPIs() {
+  const wrap = document.getElementById("kpi-strip");
+  if (!wrap) return;
+  const idx = data.activeMonthIdx;
+  const cost = monthlyCostForMonth(idx);
+  const profit = monthlyProfitForMonth(idx);
+  let openTasks = 0;
+  Object.values(data.tasks).forEach(g => g.forEach(t => { if (t.status !== "done") openTasks++; }));
+  wrap.innerHTML = `
+    <div class="kpi"><div class="label">${MONTHS[idx]} Cost</div><div class="value">${fmtCompact(cost)}</div></div>
+    <div class="kpi"><div class="label">${MONTHS[idx]} Profit</div><div class="value positive">${fmtCompact(profit)}</div></div>
+    <div class="kpi"><div class="label">Net</div><div class="value ${profit-cost >= 0 ? 'positive' : 'negative'}">${fmtCompact(profit - cost)}</div></div>
+    <div class="kpi"><div class="label">Active Clients</div><div class="value">${data.clients.length}</div></div>
+    <div class="kpi"><div class="label">Open Tasks</div><div class="value">${openTasks}</div></div>
+  `;
+}
+
+// ============================================
+// COSTS CALENDAR
+// ============================================
+function renderCalendar() {
+  const strip = document.getElementById("calendar-strip");
+  if (!strip) return;
+  strip.innerHTML = "";
+  data.costs.forEach((m, i) => {
+    const total = monthlyCostForMonth(i);
+    const pill = document.createElement("div");
+    pill.className = "month-pill" + (i === data.activeMonthIdx ? " active" : "");
+    pill.innerHTML = `<div class="mname">${m.label}</div><div class="mtotal">${fmtCompact(total)}</div>`;
+    pill.onclick = () => { data.activeMonthIdx = i; save(); renderMonthSelector(); renderKPIs(); renderCalendar(); renderMonthDetail(); renderMonthBatches(); renderHero(); renderHorizon(); };
+    strip.appendChild(pill);
+  });
+}
+function renderMonthDetail() {
+  const wrap = document.getElementById("month-detail-wrap");
+  if (!wrap) return;
+  const idx = data.activeMonthIdx;
+  const m = data.costs[idx];
+  let total = 0;
+  let html = `<div class="month-detail"><h3>${m.label}</h3>`;
+  (m.items || []).forEach((item, i) => {
+    const amt = Number(item.amount) || 0;
+    if (!item.tentative) total += amt;
+    html += `
+      <div class="row">
+        <div class="grow"><span class="editable" contenteditable="true" oninput="data.costs[${idx}].items[${i}].name = this.textContent; save()">${item.name}</span></div>
+        <input type="number" class="num" value="${amt}" oninput="data.costs[${idx}].items[${i}].amount = Number(this.value); save(); renderCalendar(); renderMonthDetail(); renderKPIs(); renderBackup()" />
+        <div class="toggle-switch ${item.tentative ? "" : "on"}" onclick="data.costs[${idx}].items[${i}].tentative = !data.costs[${idx}].items[${i}].tentative; save(); renderCalendar(); renderMonthDetail(); renderKPIs(); renderBackup()"></div>
+        <span class="delete-x" onclick="data.costs[${idx}].items.splice(${i},1); save(); renderCalendar(); renderMonthDetail(); renderKPIs()">×</span>
+      </div>`;
+  });
+  html += `<div class="month-total-row"><span>Confirmed total</span><span class="amount">${fmt(total)}</span></div>`;
+  html += `<button class="btn btn-sm add-row-btn" onclick="data.costs[${idx}].items.push({name:'New cost', amount:0, tentative:false}); save(); renderMonthDetail(); renderCalendar(); renderKPIs()">+ Add cost line</button></div>`;
+  wrap.innerHTML = html;
+}
+function renderMonthBatches() {
+  const wrap = document.getElementById("month-batches");
+  if (!wrap) return;
+  const idx = data.activeMonthIdx;
+  const monthLabel = MONTHS[idx].split(" ")[0]; // e.g. "May"
+  const relevant = data.batches.filter(b => (b.startDate || "").includes(monthLabel) || (b.endDate || "").includes(monthLabel));
+  if (!relevant.length) {
+    wrap.innerHTML = `<div style="color:var(--muted);font-size:13px;padding:8px 0;">No batches active in ${MONTHS[idx]}. <button class="btn btn-sm" onclick="switchTab('production')">Go to Production</button></div>`;
+    return;
+  }
+  wrap.innerHTML = `<div class="batch-row head"><div>Batch</div><div>SKU</div><div>Qty</div><div>Manufacturer</div><div>Dates</div><div>Status</div><div></div></div>` +
+    relevant.map(b => {
+      const i = data.batches.indexOf(b);
+      return `<div class="batch-row">
+        <div class="id-cell">#${b.id}</div>
+        <div>${b.sku}</div>
+        <div>${b.qty}</div>
+        <div style="font-size:12px;color:var(--muted);">${b.manufacturer || '—'}</div>
+        <div style="font-size:12px;color:var(--muted);">${b.startDate} → ${b.endDate}</div>
+        <div><span class="pill ${stagePillClass(b.status)}">${b.status}</span></div>
+        <div></div>
+      </div>`;
+    }).join("");
+}
+
+// ============================================
+// BATCHES
+// ============================================
+function renderBatches() {
+  const wrap = document.getElementById("batch-list");
+  if (!wrap) return;
+  const stats = document.getElementById("batch-stats");
+  const total = data.batches.length;
+  const done = data.batches.filter(b => b.status === "done").length;
+  const intrack = data.batches.filter(b => b.status === "in track").length;
+  const pending = data.batches.filter(b => b.status === "pending").length;
+  stats.innerHTML = `
+    <div class="batch-stat total"><div class="label">Total</div><div class="v">${total}</div></div>
+    <div class="batch-stat done"><div class="label">Done</div><div class="v">${done}</div></div>
+    <div class="batch-stat intrack"><div class="label">In track</div><div class="v">${intrack}</div></div>
+    <div class="batch-stat pending"><div class="label">Pending</div><div class="v">${pending}</div></div>
+  `;
+  document.getElementById("batch-progress").style.width = total ? ((done / total) * 100).toFixed(0) + "%" : "0%";
+  document.getElementById("batch-count").textContent = `${total} total · ${done} done · ${intrack} in track · ${pending} pending`;
+
+  const skuOptions = data.skus.map(s => s.name).map(n => `<option value="${n}">${n}</option>`).join("");
+  wrap.innerHTML = data.batches.map((b, i) => {
+    const total = (Number(b.qty) || 0) * (Number(b.profitPc) || 0);
+    return `<div class="batch-row">
+      <div class="id-cell"><span class="editable" contenteditable="true" oninput="data.batches[${i}].id = this.textContent; save()">#${b.id}</span></div>
+      <div><select class="select-input" onchange="data.batches[${i}].sku = this.value; const s = data.skus.find(x => x.name === this.value); if (s) data.batches[${i}].profitPc = s.profitPc; save(); renderBatches(); renderSkus()">
+        <option value="">— pick —</option>
+        ${data.skus.map(s => `<option value="${s.name}" ${s.name === b.sku ? "selected" : ""}>${s.name}</option>`).join("")}
+      </select></div>
+      <div><input type="number" class="num" value="${b.qty}" oninput="data.batches[${i}].qty = Number(this.value); save(); renderBatches(); renderSkus()" style="width:70px;text-align:left;" /></div>
+      <div><input type="text" class="text-input" value="${b.manufacturer || ''}" oninput="data.batches[${i}].manufacturer = this.value; save()" style="width:100%;text-align:left;font-size:12px;padding:6px 8px;border-radius:6px;background:rgba(255,255,255,0.03);border:1px solid var(--border);color:var(--text);" /></div>
+      <div style="font-size:12px;display:flex;flex-direction:column;gap:4px;">
+        <input type="text" class="text-input" value="${b.startDate || ''}" placeholder="Start" oninput="data.batches[${i}].startDate = this.value; save()" style="width:100%;text-align:left;font-size:11px;padding:5px 8px;border-radius:5px;" />
+        <input type="text" class="text-input" value="${b.endDate || ''}" placeholder="End" oninput="data.batches[${i}].endDate = this.value; save()" style="width:100%;text-align:left;font-size:11px;padding:5px 8px;border-radius:5px;" />
+      </div>
+      <div><span class="pill ${stagePillClass(b.status)}" onclick="data.batches[${i}].status = cycleBatchStatus(data.batches[${i}].status); save(); renderBatches(); renderSkus(); renderTurnover(); renderRings()">${b.status}</span><div style="font-size:11px;color:var(--muted);margin-top:4px;">${fmtCompact(total)}</div></div>
+      <div><span class="delete-x" onclick="data.batches.splice(${i},1); save(); renderBatches(); renderSkus()">×</span></div>
+    </div>`;
+  }).join("");
+}
+function addBatch() {
+  const nextId = String((data.batches.length ? Math.max(...data.batches.map(b => parseInt(b.id) || 0)) : 0) + 1).padStart(3, "0");
+  data.batches.push({ id: nextId, sku: data.skus[0]?.name || "", qty: 0, manufacturer: "", startDate: "", endDate: "", status: "pending", profitPc: data.skus[0]?.profitPc || 60 });
+  save(); renderBatches();
+}
+
+// ============================================
+// SKUs
+// ============================================
+function renderSkus() {
+  const list = document.getElementById("sku-list");
+  if (!list) return;
+  let totalProfit = 0;
+  list.innerHTML = data.skus.map((s, i) => {
+    const pcs = pcsSoldForSku(s.name);
+    const total = pcs * (Number(s.profitPc) || 0);
+    totalProfit += total;
+    const costRange = s.costMin === s.costMax ? `${s.costMin}` : `${s.costMin}-${s.costMax}`;
+    const priceRange = s.priceMin === s.priceMax ? `${s.priceMin}` : `${s.priceMin}-${s.priceMax}`;
+    return `<div class="sku-table">
+      <div><span class="editable" contenteditable="true" oninput="data.skus[${i}].name = this.textContent; save()">${s.name}</span></div>
+      <div class="hide-mobile" style="font-size:12px;color:var(--muted);">${costRange}</div>
+      <div class="hide-mobile" style="font-size:12px;color:var(--muted);">${priceRange}</div>
+      <div><input type="number" class="num" value="${s.profitPc}" style="width:70px;" oninput="data.skus[${i}].profitPc = Number(this.value); save(); renderSkus(); renderTurnover()" /></div>
+      <div style="font-weight:700;color:var(--accent-2);">${pcs}<div style="font-size:10px;color:var(--muted);font-weight:500;">from batches</div></div>
+      <div style="font-weight:700;background:var(--grad-3);-webkit-background-clip:text;background-clip:text;-webkit-text-fill-color:transparent;">${fmtCompact(total)}</div>
+      <span class="delete-x" onclick="data.skus.splice(${i},1); save(); renderSkus()">×</span>
+    </div>`;
+  }).join("");
+}
+function addSku() {
+  data.skus.push({ name: "New product", costMin: 0, costMax: 0, priceMin: 0, priceMax: 0, profitPc: 60 });
+  save(); renderSkus();
+}
+
+// ============================================
+// CLIENTS
+// ============================================
+function renderClients() {
+  const wrap = document.getElementById("active-clients-list");
+  if (!wrap) return;
+  wrap.innerHTML = "";
+  data.clients.forEach((c, ci) => {
+    const card = document.createElement("div");
+    card.className = "client-card" + (c.stage === "closed" ? " closed" : "");
+    let prodHtml = "";
+    let wkTotal = 0;
+    (c.products || []).forEach((p, pi) => {
+      const amt = Number(p.weeklyProfit) || 0;
+      wkTotal += amt;
+      prodHtml += `<div class="row">
+        <div class="grow"><span class="editable" contenteditable="true" oninput="data.clients[${ci}].products[${pi}].sku = this.textContent; save()">${p.sku}</span></div>
+        <input type="number" class="num" value="${amt}" oninput="data.clients[${ci}].products[${pi}].weeklyProfit = Number(this.value); save(); renderClients(); renderKPIs(); renderHorizon(); renderHero()" />
+        <span style="font-size:10px;color:var(--muted);text-transform:uppercase;letter-spacing:0.06em;">/wk</span>
+        <span class="delete-x" onclick="data.clients[${ci}].products.splice(${pi},1); save(); renderClients()">×</span>
+      </div>`;
+    });
+
+    let calcHtml = "";
+    if (c.calcOpen && c.calcLines) {
+      calcHtml = `<div class="calc-panel"><h4>📈 Monthly calculation</h4>
+        <div class="calc-grid label-cell"><div>Product</div><div>Pcs/mo</div><div>Profit/pc</div><div>Total ₹</div><div></div></div>`;
+      let calcTotal = 0;
+      c.calcLines.forEach((l, li) => {
+        const pcs = Number(l.pcsMonth) || 0;
+        const ppc = Number(l.profitPc) || 0;
+        const tot = pcs * ppc;
+        calcTotal += tot;
+        const skuOpt = data.skus.map(s => `<option value="${s.name}" ${s.name === l.sku ? "selected" : ""}>${s.name}</option>`).join("");
+        calcHtml += `<div class="calc-grid">
+          <div><select class="select-input" onchange="data.clients[${ci}].calcLines[${li}].sku = this.value; const s = data.skus.find(x => x.name === this.value); if (s) data.clients[${ci}].calcLines[${li}].profitPc = s.profitPc; save(); renderClients(); renderKPIs(); renderHero(); renderHorizon()" style="width:100%;font-size:12px;">
+            <option value="${l.sku}">${l.sku}</option>${skuOpt}
+          </select></div>
+          <input type="number" class="num" value="${pcs}" oninput="data.clients[${ci}].calcLines[${li}].pcsMonth = Number(this.value); save(); renderClients(); renderKPIs(); renderHero(); renderHorizon()" />
+          <input type="number" class="num" value="${ppc}" oninput="data.clients[${ci}].calcLines[${li}].profitPc = Number(this.value); save(); renderClients(); renderKPIs(); renderHero(); renderHorizon()" />
+          <div style="font-weight:700;">${fmtCompact(tot)}</div>
+          <span class="delete-x" onclick="data.clients[${ci}].calcLines.splice(${li},1); save(); renderClients(); renderKPIs()">×</span>
+        </div>`;
+      });
+      calcHtml += `<div class="calc-total"><span>Monthly profit</span><span class="amt">${fmt(calcTotal)}</span></div>`;
+      calcHtml += `<button class="btn btn-sm add-row-btn" onclick="data.clients[${ci}].calcLines.push({sku:data.skus[0]?.name||'',pcsMonth:0,profitPc:data.skus[0]?.profitPc||60}); save(); renderClients(); renderKPIs()">+ Add product line</button></div>`;
+    }
+    card.innerHTML = `
+      <div style="display:flex;justify-content:space-between;align-items:flex-start;gap:10px;margin-bottom:6px;">
+        <h3><span class="editable" contenteditable="true" oninput="data.clients[${ci}].name = this.textContent; save()">${c.name}</span></h3>
+        <span class="pill ${stagePillClass(c.stage)}" onclick="data.clients[${ci}].stage = (data.clients[${ci}].stage === 'active' ? 'closed' : 'active'); save(); renderClients(); renderKPIs(); renderHero(); renderHorizon()">${c.stage}</span>
+      </div>
+      <div class="meta"><span class="editable" contenteditable="true" oninput="data.clients[${ci}].note = this.textContent; save()">${c.note || ''}</span></div>
+      ${prodHtml}
+      <button class="btn btn-sm add-row-btn" onclick="data.clients[${ci}].products.push({sku:'New product',weeklyProfit:0}); save(); renderClients()">+ Add product</button>
+      <div style="display:flex;gap:14px;margin-top:14px;flex-wrap:wrap;align-items:center;">
+        <div><span style="font-size:10px;color:var(--muted);text-transform:uppercase;font-weight:700;letter-spacing:0.06em;">Weekly</span><div style="font-weight:700;font-size:15px;">${fmtCompact(wkTotal)}</div></div>
+        <div><span style="font-size:10px;color:var(--muted);text-transform:uppercase;font-weight:700;letter-spacing:0.06em;">May cycles</span>
+          <input type="number" class="num" style="width:60px;text-align:left;font-size:14px;" value="${c.mayCycles}" oninput="data.clients[${ci}].mayCycles = Number(this.value); save(); renderClients(); renderKPIs()" /></div>
+        <div><span style="font-size:10px;color:var(--muted);text-transform:uppercase;font-weight:700;letter-spacing:0.06em;">May profit</span><div style="font-weight:800;font-size:15px;background:var(--grad-3);-webkit-background-clip:text;background-clip:text;-webkit-text-fill-color:transparent;">${fmtCompact(wkTotal * c.mayCycles)}</div></div>
+        <button class="btn btn-sm" onclick="data.clients[${ci}].calcOpen = !data.clients[${ci}].calcOpen; save(); renderClients()">${c.calcOpen ? "Hide" : "Show"} monthly calc</button>
+      </div>
+      ${calcHtml}
+    `;
+    wrap.appendChild(card);
+  });
+}
+
+// Pipeline
+function renderPipeline() {
+  const wrap = document.getElementById("pipeline-list");
+  if (!wrap) return;
+  wrap.innerHTML = "";
+  data.pipelineClients.forEach((p, i) => {
+    const card = document.createElement("div");
+    card.className = "client-card" + (p.stage === "closed" ? " closed" : "");
+    let calcHtml = "";
+    if (p.stage === "closed") {
+      if (!p.calcLines) p.calcLines = [{ sku: data.skus[0]?.name || "", pcsMonth: 0, profitPc: data.skus[0]?.profitPc || 60 }];
+      calcHtml = `<div class="calc-panel"><h4>📈 Monthly calculation (closed)</h4>
+        <div class="calc-grid label-cell"><div>Product</div><div>Pcs/mo</div><div>Profit/pc</div><div>Total ₹</div><div></div></div>`;
+      let calcTotal = 0;
+      p.calcLines.forEach((l, li) => {
+        const pcs = Number(l.pcsMonth) || 0;
+        const ppc = Number(l.profitPc) || 0;
+        const tot = pcs * ppc;
+        calcTotal += tot;
+        const skuOpt = data.skus.map(s => `<option value="${s.name}" ${s.name === l.sku ? "selected" : ""}>${s.name}</option>`).join("");
+        calcHtml += `<div class="calc-grid">
+          <div><select class="select-input" onchange="data.pipelineClients[${i}].calcLines[${li}].sku = this.value; const s = data.skus.find(x => x.name === this.value); if (s) data.pipelineClients[${i}].calcLines[${li}].profitPc = s.profitPc; save(); renderPipeline(); renderKPIs(); renderHero(); renderHorizon()" style="width:100%;font-size:12px;">
+            <option value="${l.sku}">${l.sku}</option>${skuOpt}
+          </select></div>
+          <input type="number" class="num" value="${pcs}" oninput="data.pipelineClients[${i}].calcLines[${li}].pcsMonth = Number(this.value); save(); renderPipeline(); renderKPIs(); renderHero(); renderHorizon()" />
+          <input type="number" class="num" value="${ppc}" oninput="data.pipelineClients[${i}].calcLines[${li}].profitPc = Number(this.value); save(); renderPipeline(); renderKPIs(); renderHero(); renderHorizon()" />
+          <div style="font-weight:700;">${fmtCompact(tot)}</div>
+          <span class="delete-x" onclick="data.pipelineClients[${i}].calcLines.splice(${li},1); save(); renderPipeline(); renderKPIs()">×</span>
+        </div>`;
+      });
+      calcHtml += `<div class="calc-total"><span>Monthly profit</span><span class="amt">${fmt(calcTotal)}</span></div>`;
+      calcHtml += `<button class="btn btn-sm add-row-btn" onclick="data.pipelineClients[${i}].calcLines.push({sku:data.skus[0]?.name||'',pcsMonth:0,profitPc:data.skus[0]?.profitPc||60}); save(); renderPipeline(); renderKPIs()">+ Add product</button></div>`;
+    }
+    card.innerHTML = `
+      <div style="display:flex;justify-content:space-between;align-items:center;gap:10px;">
+        <div class="grow"><span class="editable" contenteditable="true" oninput="data.pipelineClients[${i}].name = this.textContent; save()">${p.name}</span></div>
+        <span class="pill ${stagePillClass(p.stage)}" onclick="data.pipelineClients[${i}].stage = cycleStage(data.pipelineClients[${i}].stage); if (data.pipelineClients[${i}].stage === 'closed' && !data.pipelineClients[${i}].calcLines) data.pipelineClients[${i}].calcLines = [{sku:data.skus[0]?.name||'',pcsMonth:0,profitPc:data.skus[0]?.profitPc||60}]; save(); renderPipeline(); renderKPIs(); renderHero(); renderHorizon(); renderRings()">${p.stage}</span>
+        <span class="delete-x" onclick="data.pipelineClients.splice(${i},1); save(); renderPipeline(); renderKPIs()">×</span>
+      </div>
+      ${calcHtml}
+    `;
+    wrap.appendChild(card);
+  });
+}
+function addPipelineClient() {
+  data.pipelineClients.push({ name: "New prospect", stage: "lead" });
+  save(); renderPipeline();
+}
+
+// Wholesale
+function renderWholesale() {
+  const f = data.wholesaleFunnel;
+  document.getElementById("wholesale-funnel").innerHTML = `
+    <div class="funnel-stage"><div class="label">Leads</div><input type="number" class="num" value="${f.leads}" oninput="data.wholesaleFunnel.leads = Number(this.value); save(); renderWholesale()" /></div>
+    <div class="funnel-stage"><div class="label">Cold called</div><input type="number" class="num" value="${f.coldCalled}" oninput="data.wholesaleFunnel.coldCalled = Number(this.value); save(); renderWholesale()" /></div>
+    <div class="funnel-stage"><div class="label">In talks</div><input type="number" class="num" value="${f.inTalks}" oninput="data.wholesaleFunnel.inTalks = Number(this.value); save(); renderWholesale()" /></div>
+    <div class="funnel-stage"><div class="label">Closed</div><input type="number" class="num" value="${f.closed}" oninput="data.wholesaleFunnel.closed = Number(this.value); save(); renderWholesale(); renderKPIs(); renderRings()" /></div>
+  `;
+  const pct = Math.min(100, Math.round((f.closed / (f.target || 1)) * 100));
+  document.getElementById("wholesale-progress").style.width = pct + "%";
+  document.getElementById("wholesale-progress-text").innerHTML = `<strong style="color:var(--text);">${f.closed} of ${f.target} clients closed (${pct}%)</strong> · weekly target: <strong style="color:var(--accent-2);">${fmtCompact(f.weeklyTarget)}</strong>`;
+
+  const list = document.getElementById("wholesale-leads-list");
+  list.innerHTML = "";
+  data.wholesaleLeads.forEach((l, i) => {
+    const card = document.createElement("div");
+    card.className = "client-card" + (l.stage === "closed" ? " closed" : "");
+    let calcHtml = "";
+    if (l.stage === "closed") {
+      if (!l.calcLines) l.calcLines = [{ sku: data.skus[0]?.name || "", pcsMonth: 0, profitPc: data.skus[0]?.profitPc || 60 }];
+      calcHtml = `<div class="calc-panel"><h4>📈 Monthly calculation</h4>
+        <div class="calc-grid label-cell"><div>Product</div><div>Pcs/mo</div><div>Profit/pc</div><div>Total ₹</div><div></div></div>`;
+      let calcTotal = 0;
+      l.calcLines.forEach((cl, li) => {
+        const pcs = Number(cl.pcsMonth) || 0;
+        const ppc = Number(cl.profitPc) || 0;
+        const tot = pcs * ppc;
+        calcTotal += tot;
+        const skuOpt = data.skus.map(s => `<option value="${s.name}" ${s.name === cl.sku ? "selected" : ""}>${s.name}</option>`).join("");
+        calcHtml += `<div class="calc-grid">
+          <div><select class="select-input" onchange="data.wholesaleLeads[${i}].calcLines[${li}].sku = this.value; const s = data.skus.find(x => x.name === this.value); if (s) data.wholesaleLeads[${i}].calcLines[${li}].profitPc = s.profitPc; save(); renderWholesale(); renderKPIs(); renderHero(); renderHorizon()" style="width:100%;font-size:12px;">
+            <option value="${cl.sku}">${cl.sku}</option>${skuOpt}
+          </select></div>
+          <input type="number" class="num" value="${pcs}" oninput="data.wholesaleLeads[${i}].calcLines[${li}].pcsMonth = Number(this.value); save(); renderWholesale(); renderKPIs(); renderHero(); renderHorizon()" />
+          <input type="number" class="num" value="${ppc}" oninput="data.wholesaleLeads[${i}].calcLines[${li}].profitPc = Number(this.value); save(); renderWholesale(); renderKPIs(); renderHero(); renderHorizon()" />
+          <div style="font-weight:700;">${fmtCompact(tot)}</div>
+          <span class="delete-x" onclick="data.wholesaleLeads[${i}].calcLines.splice(${li},1); save(); renderWholesale(); renderKPIs()">×</span>
+        </div>`;
+      });
+      calcHtml += `<div class="calc-total"><span>Monthly profit</span><span class="amt">${fmt(calcTotal)}</span></div>`;
+      calcHtml += `<button class="btn btn-sm add-row-btn" onclick="data.wholesaleLeads[${i}].calcLines.push({sku:data.skus[0]?.name||'',pcsMonth:0,profitPc:data.skus[0]?.profitPc||60}); save(); renderWholesale(); renderKPIs()">+ Add product</button></div>`;
+    }
+    card.innerHTML = `
+      <div style="display:flex;justify-content:space-between;align-items:center;gap:10px;">
+        <div class="grow"><span class="editable" contenteditable="true" oninput="data.wholesaleLeads[${i}].name = this.textContent; save()">${l.name}</span></div>
+        <span class="pill ${stagePillClass(l.stage)}" onclick="data.wholesaleLeads[${i}].stage = cycleStage(data.wholesaleLeads[${i}].stage); if (data.wholesaleLeads[${i}].stage === 'closed' && !data.wholesaleLeads[${i}].calcLines) data.wholesaleLeads[${i}].calcLines = [{sku:data.skus[0]?.name||'',pcsMonth:0,profitPc:data.skus[0]?.profitPc||60}]; save(); renderWholesale(); renderKPIs(); renderRings()">${l.stage}</span>
+        <span class="delete-x" onclick="data.wholesaleLeads.splice(${i},1); save(); renderWholesale(); renderKPIs()">×</span>
+      </div>
+      ${calcHtml}
+    `;
+    list.appendChild(card);
+  });
+}
+function addWholesaleLead() {
+  data.wholesaleLeads.push({ name: "New lead", stage: "lead" });
+  save(); renderWholesale();
+}
+
+// Retail
+function renderRetail() {
+  const c = document.getElementById("retail-content");
+  if (!c) return;
+  let calcHtml = "";
+  if (data.retail.calcOpen) {
+    if (!data.retail.calcLines) data.retail.calcLines = [];
+    calcHtml = `<div class="calc-panel"><h4>📈 Retail monthly calc</h4>
+      <div class="calc-grid label-cell"><div>Product</div><div>Pcs/mo</div><div>Profit/pc</div><div>Total ₹</div><div></div></div>`;
+    let total = 0;
+    data.retail.calcLines.forEach((l, li) => {
+      const pcs = Number(l.pcsMonth) || 0;
+      const ppc = Number(l.profitPc) || 0;
+      const tot = pcs * ppc;
+      total += tot;
+      const skuOpt = data.skus.map(s => `<option value="${s.name}" ${s.name === l.sku ? "selected" : ""}>${s.name}</option>`).join("");
+      calcHtml += `<div class="calc-grid">
+        <div><select class="select-input" onchange="data.retail.calcLines[${li}].sku = this.value; const s = data.skus.find(x => x.name === this.value); if (s) data.retail.calcLines[${li}].profitPc = s.profitPc; save(); renderRetail(); renderKPIs()" style="width:100%;font-size:12px;">
+          <option value="${l.sku}">${l.sku}</option>${skuOpt}
+        </select></div>
+        <input type="number" class="num" value="${pcs}" oninput="data.retail.calcLines[${li}].pcsMonth = Number(this.value); save(); renderRetail(); renderKPIs()" />
+        <input type="number" class="num" value="${ppc}" oninput="data.retail.calcLines[${li}].profitPc = Number(this.value); save(); renderRetail(); renderKPIs()" />
+        <div style="font-weight:700;">${fmtCompact(tot)}</div>
+        <span class="delete-x" onclick="data.retail.calcLines.splice(${li},1); save(); renderRetail(); renderKPIs()">×</span>
+      </div>`;
+    });
+    calcHtml += `<div class="calc-total"><span>Retail monthly profit</span><span class="amt">${fmt(total)}</span></div>`;
+    calcHtml += `<button class="btn btn-sm add-row-btn" onclick="data.retail.calcLines.push({sku:data.skus[0]?.name||'',pcsMonth:0,profitPc:data.skus[0]?.profitPc||60}); save(); renderRetail()">+ Add product</button></div>`;
+  }
+  c.innerHTML = `
+    <div class="retail-grid">
+      <div class="info-tile"><div class="label">Status</div><div class="val"><span class="editable" contenteditable="true" oninput="data.retail.status = this.textContent; save()">${data.retail.status}</span></div></div>
+      <div class="info-tile"><div class="label">Current revenue</div><div class="val"><input type="number" class="num" style="width:120px;font-size:15px;font-weight:700;text-align:left;" value="${data.retail.revenue}" oninput="data.retail.revenue = Number(this.value); save()" /></div></div>
+    </div>
+    <div style="color:var(--muted);font-size:13px;margin-bottom:14px;"><span class="editable" contenteditable="true" oninput="data.retail.note = this.textContent; save()">${data.retail.note}</span></div>
+    <button class="btn btn-sm" onclick="data.retail.calcOpen = !data.retail.calcOpen; if(data.retail.calcOpen && !data.retail.calcLines.length) data.retail.calcLines = [{sku:data.skus[0]?.name||'',pcsMonth:0,profitPc:data.skus[0]?.profitPc||60}]; save(); renderRetail()">${data.retail.calcOpen ? "Hide" : "Show"} retail calc</button>
+    ${calcHtml}
+    <h3 style="font-size:11px;color:var(--muted);text-transform:uppercase;letter-spacing:0.08em;margin:18px 0 10px;font-weight:700;">Retail to-do</h3>
+    <div id="retail-todos"></div>
+    <button class="btn btn-sm add-row-btn" onclick="data.retail.todos.push({name:'New todo',status:'pending'}); save(); renderRetail()">+ Add todo</button>
+  `;
+  const tw = document.getElementById("retail-todos");
+  data.retail.todos.forEach((t, i) => {
+    const row = document.createElement("div");
+    row.className = "row" + (t.status === "done" ? " done" : "");
+    row.innerHTML = `
+      <div class="checkbox ${t.status === "done" ? "checked" : ""}" onclick="data.retail.todos[${i}].status = data.retail.todos[${i}].status === 'done' ? 'pending' : 'done'; save(); renderRetail(); renderKPIs()"></div>
+      <div class="grow"><span class="editable" contenteditable="true" oninput="data.retail.todos[${i}].name = this.textContent; save()">${t.name}</span></div>
+      <span class="pill ${t.status}" onclick="data.retail.todos[${i}].status = cycleStatus(data.retail.todos[${i}].status); save(); renderRetail()">${t.status}</span>
+      <span class="delete-x" onclick="data.retail.todos.splice(${i},1); save(); renderRetail()">×</span>
+    `;
+    tw.appendChild(row);
+  });
+}
+
+// ============================================
+// CALCULATOR
+// ============================================
+function renderCalculator() {
+  const c = data.calculator;
+  document.getElementById("val-large").value = c.largeVal;
+  document.getElementById("val-med").value = c.medVal;
+  document.getElementById("val-small").value = c.smallVal;
+  document.getElementById("slide-large").value = c.largeCount;
+  document.getElementById("slide-med").value = c.medCount;
+  document.getElementById("slide-small").value = c.smallCount;
+  recalcCalculator();
+}
+function recalcCalculator() {
+  const c = data.calculator;
+  c.largeCount = Number(document.getElementById("slide-large").value);
+  c.medCount = Number(document.getElementById("slide-med").value);
+  c.smallCount = Number(document.getElementById("slide-small").value);
+  c.largeVal = Number(document.getElementById("val-large").value) || 0;
+  c.medVal = Number(document.getElementById("val-med").value) || 0;
+  c.smallVal = Number(document.getElementById("val-small").value) || 0;
+  document.getElementById("count-large").textContent = c.largeCount;
+  document.getElementById("count-med").textContent = c.medCount;
+  document.getElementById("count-small").textContent = c.smallCount;
+  const fromSliders = c.largeCount * c.largeVal + c.medCount * c.medVal + c.smallCount * c.smallVal;
+  const fromCurrent = monthlyProfitForMonth(data.activeMonthIdx);
+  const total = fromSliders + fromCurrent;
+  document.getElementById("calc-from-sliders").textContent = fmtCompact(fromSliders);
+  document.getElementById("calc-from-current").textContent = fmtCompact(fromCurrent);
+  document.getElementById("calc-total-monthly").textContent = fmtCompact(total);
+  document.getElementById("calc-annual").textContent = fmtCompact(total * 12);
+  document.getElementById("calc-big-out").textContent = fmtCompact(total);
+  save();
+}
+["slide-large", "slide-med", "slide-small", "val-large", "val-med", "val-small"].forEach(id => {
+  document.getElementById(id).addEventListener("input", recalcCalculator);
+});
+
+// ============================================
+// TASKS
+// ============================================
+function renderTasks() {
+  const list = document.getElementById("tasks-list");
+  if (!list) return;
+  list.innerHTML = "";
+  let openCount = 0, allCount = 0;
+  Object.entries(data.tasks).forEach(([group, items]) => {
+    const wrap = document.createElement("div");
+    wrap.className = "task-group";
+    wrap.innerHTML = `<h3>${group}</h3>`;
+    items.forEach((t, i) => {
+      allCount++;
+      if (t.status !== "done") openCount++;
+      const row = document.createElement("div");
+      row.className = "row" + (t.status === "done" ? " done" : "");
+      row.innerHTML = `
+        <div class="checkbox ${t.status === "done" ? "checked" : ""}" onclick="data.tasks['${group}'][${i}].status = data.tasks['${group}'][${i}].status === 'done' ? 'pending' : 'done'; save(); renderTasks(); renderActivity(); renderRings()"></div>
+        <div class="grow"><span class="editable" contenteditable="true" oninput="data.tasks['${group}'][${i}].name = this.textContent; save()">${t.name}</span></div>
+        <span style="font-size:10px;color:var(--muted);text-transform:uppercase;letter-spacing:0.06em;">Owner</span>
+        <span class="editable" contenteditable="true" oninput="data.tasks['${group}'][${i}].owner = this.textContent; save()" style="font-size:12px;font-weight:600;">${t.owner || "—"}</span>
+        <span class="pill ${t.status}" onclick="data.tasks['${group}'][${i}].status = cycleStatus(data.tasks['${group}'][${i}].status); save(); renderTasks(); renderActivity(); renderRings()">${t.status}</span>
+        <span class="delete-x" onclick="data.tasks['${group}'].splice(${i},1); save(); renderTasks()">×</span>
+      `;
+      wrap.appendChild(row);
+    });
+    const addBtn = document.createElement("button");
+    addBtn.className = "btn btn-sm add-row-btn";
+    addBtn.textContent = "+ Add task";
+    addBtn.onclick = () => { data.tasks[group].push({ name: "New task", status: "pending", owner: "You" }); save(); renderTasks(); };
+    wrap.appendChild(addBtn);
+    list.appendChild(wrap);
+  });
+  document.getElementById("tasks-summary").textContent = `${openCount} open · ${allCount - openCount} done`;
+}
+
+// ============================================
+// ROADMAP
+// ============================================
+function renderRoadmap() {
+  const grid = document.getElementById("gantt-grid");
+  if (!grid) return;
+  let html = `<div class="gantt-header first">Track</div>`;
+  MONTHS.forEach(m => html += `<div class="gantt-header">${m.split(" ")[0]}</div>`);
+  const tracks = ["production", "wholesale", "retail", "office", "marketing"];
+  const labels = { production: "Production", wholesale: "Wholesale", retail: "Retail", office: "Office", marketing: "Marketing" };
+  tracks.forEach(tr => {
+    html += `<div class="gantt-track-label">${labels[tr]}</div>`;
+    let cells = Array(12).fill(null);
+    data.milestones.forEach((m, mi) => {
+      if (m.track === tr) {
+        for (let i = m.startMonth; i <= m.endMonth; i++) {
+          if (i === m.startMonth) cells[i] = { ms: m, mi, span: m.endMonth - m.startMonth + 1 };
+          else cells[i] = { skip: true };
+        }
+      }
+    });
+    for (let i = 0; i < 12; i++) {
+      if (!cells[i]) html += `<div></div>`;
+      else if (cells[i].skip) continue;
+      else {
+        const ms = cells[i].ms;
+        const cls = ms.color === "pink" ? "color-pink" : ms.color === "cyan" ? "color-cyan" : "";
+        html += `<div class="gantt-bar ${ms.done ? "done" : ""} ${cls}" style="grid-column: span ${cells[i].span};" onclick="document.getElementById('milestone-${cells[i].mi}').scrollIntoView({behavior:'smooth',block:'center'})">${ms.done ? '✓ ' : ''}${ms.title}</div>`;
+      }
+    }
+  });
+  grid.innerHTML = html;
+
+  const cards = document.getElementById("milestone-grid");
+  cards.innerHTML = data.milestones.map((m, i) => `
+    <div class="milestone-card ${m.done ? "done" : ""}" id="milestone-${i}">
+      <div style="display:flex;justify-content:space-between;align-items:flex-start;gap:10px;">
+        <div style="flex:1;">
+          <div class="ph"><span class="editable" contenteditable="true" oninput="data.milestones[${i}].phase = this.textContent; save()">${m.phase}</span></div>
+          <div class="ttl"><span class="editable" contenteditable="true" oninput="data.milestones[${i}].title = this.textContent; save(); renderRoadmap()">${m.title}</span></div>
+          <div class="desc"><span class="editable" contenteditable="true" oninput="data.milestones[${i}].desc = this.textContent; save()">${m.desc}</span></div>
+        </div>
+        <div class="checkbox ${m.done ? "checked" : ""}" onclick="data.milestones[${i}].done = !data.milestones[${i}].done; save(); renderRoadmap()"></div>
+      </div>
+      <div style="display:flex;gap:8px;align-items:center;margin-top:10px;flex-wrap:wrap;">
+        <span style="font-size:10px;color:var(--muted);text-transform:uppercase;font-weight:700;letter-spacing:0.06em;">Track</span>
+        <select class="select-input" onchange="data.milestones[${i}].track = this.value; save(); renderRoadmap()" style="font-size:11px;padding:4px 8px;">
+          ${["production","wholesale","retail","office","marketing"].map(t => `<option value="${t}" ${m.track === t ? "selected" : ""}>${t}</option>`).join("")}
+        </select>
+        <span style="font-size:10px;color:var(--muted);text-transform:uppercase;font-weight:700;letter-spacing:0.06em;">From</span>
+        <select class="select-input" onchange="data.milestones[${i}].startMonth = Number(this.value); save(); renderRoadmap()" style="font-size:11px;padding:4px 8px;">
+          ${MONTHS.map((mo, j) => `<option value="${j}" ${m.startMonth === j ? "selected" : ""}>${mo}</option>`).join("")}
+        </select>
+        <span style="font-size:10px;color:var(--muted);text-transform:uppercase;font-weight:700;letter-spacing:0.06em;">To</span>
+        <select class="select-input" onchange="data.milestones[${i}].endMonth = Number(this.value); save(); renderRoadmap()" style="font-size:11px;padding:4px 8px;">
+          ${MONTHS.map((mo, j) => `<option value="${j}" ${m.endMonth === j ? "selected" : ""}>${mo}</option>`).join("")}
+        </select>
+        <span class="delete-x" onclick="data.milestones.splice(${i},1); save(); renderRoadmap()">×</span>
+      </div>
+    </div>
+  `).join("");
+}
+function addMilestone() {
+  data.milestones.push({ phase: "New phase", title: "New milestone", desc: "Click to edit", track: "production", startMonth: 0, endMonth: 0, done: false, color: "default" });
+  save(); renderRoadmap();
+}
+
+// ============================================
+// SETUP
+// ============================================
+function renderSetup() {
+  const list = document.getElementById("setup-list");
+  if (!list) return;
+  list.innerHTML = "";
+  data.setup.forEach((item, i) => {
+    const row = document.createElement("div");
+    row.className = "row" + (item.status === "done" ? " done" : "");
+    row.innerHTML = `
+      <div class="checkbox ${item.status === "done" ? "checked" : ""}" onclick="data.setup[${i}].status = data.setup[${i}].status === 'done' ? 'pending' : 'done'; save(); renderSetup()"></div>
+      <div class="grow"><span class="editable" contenteditable="true" oninput="data.setup[${i}].name = this.textContent; save()">${item.name}</span></div>
+      <span class="pill ${item.status}" onclick="data.setup[${i}].status = cycleStatus(data.setup[${i}].status); save(); renderSetup()">${item.status}</span>
+      <span class="delete-x" onclick="data.setup.splice(${i},1); save(); renderSetup()">×</span>
+    `;
+    list.appendChild(row);
+  });
+  const done = data.setup.filter(i => i.status === "done").length;
+  document.getElementById("setup-summary").textContent = `${done}/${data.setup.length} done`;
+}
+function addSetupItem() {
+  data.setup.push({ name: "New item", status: "pending" });
+  save(); renderSetup();
+}
+
+// ============================================
+// BACKUP
+// ============================================
+function renderBackup() {
+  const target = Number(data.backup.target) || 0;
+  const saved = Number(data.backup.saved) || 0;
+  let ongoing = 0, count = 0;
+  for (let i = 3; i < 12; i++) {
+    const t = monthlyCostForMonth(i);
+    if (t > 0) { ongoing += t; count++; }
+  }
+  const avgBurn = count ? Math.round(ongoing / count) : 0;
+  const months = avgBurn ? (saved / avgBurn).toFixed(1) : "0";
+  document.getElementById("backup-saved").textContent = fmtCompact(saved);
+  document.getElementById("backup-months").textContent = `covers ${months} months at avg burn of ${fmtCompact(avgBurn)}/mo`;
+  document.getElementById("backup-target").value = target;
+  document.getElementById("backup-saved-input").value = saved;
+  const pct = target ? Math.min(100, Math.round((saved / target) * 100)) : 0;
+  document.getElementById("backup-progress").style.width = pct + "%";
+}
+document.addEventListener("DOMContentLoaded", () => {
+  const t = document.getElementById("backup-target");
+  if (t) t.addEventListener("input", e => { data.backup.target = Number(e.target.value); save(); renderBackup(); renderRings(); });
+  const s = document.getElementById("backup-saved-input");
+  if (s) s.addEventListener("input", e => { data.backup.saved = Number(e.target.value); save(); renderBackup(); renderRings(); });
+});
+
+// ============================================
+// TURNOVER
+// ============================================
+function renderTurnover() {
+  const wrap = document.getElementById("turnover-grid");
+  if (!wrap) return;
+  const lifeProfit = lifetimeProfit();
+  const lifeRev = lifetimeRevenue();
+  const totalPcs = totalPcsSold();
+  const monthsActive = data.batches.filter(b => b.status === "done").length ? 1 : 0; // simplified
+
+  document.getElementById("turnover-big").textContent = fmtCompact(lifeProfit);
+  wrap.innerHTML = `
+    <div class="tn-card v1"><div class="label">Lifetime Revenue</div><div class="v">${fmtCompact(lifeRev)}</div></div>
+    <div class="tn-card v2"><div class="label">Lifetime Profit</div><div class="v">${fmtCompact(lifeProfit)}</div></div>
+    <div class="tn-card v3"><div class="label">Total Pcs Sold</div><div class="v">${totalPcs.toLocaleString("en-IN")}</div></div>
+    <div class="tn-card v4"><div class="label">Done Batches</div><div class="v">${data.batches.filter(b => b.status === "done").length}</div></div>
+  `;
+
+  // Top SKUs
+  const skuProfits = data.skus.map(s => ({
+    name: s.name,
+    profit: pcsSoldForSku(s.name) * (Number(s.profitPc) || 0)
+  })).filter(s => s.profit > 0).sort((a, b) => b.profit - a.profit).slice(0, 8);
+  const top = document.getElementById("top-skus");
+  if (!skuProfits.length) {
+    top.innerHTML = `<div style="color:var(--muted);font-size:13px;padding:10px 0;">No done batches yet — mark some batches as done in Production tab to see top SKUs.</div>`;
+  } else {
+    const max = skuProfits[0].profit;
+    const grads = [["#a855f7","#06b6d4"],["#ec4899","#f59e0b"],["#06b6d4","#22d3ee"],["#10b981","#06b6d4"],["#f97316","#ec4899"]];
+    top.innerHTML = skuProfits.map((s, i) => `
+      <div class="top-sku-row">
+        <div class="name">${s.name}</div>
+        <div class="bar"><div class="bar-fill" style="width:${(s.profit / max * 100).toFixed(0)}%;background:linear-gradient(135deg,${grads[i % 5][0]},${grads[i % 5][1]});color:${grads[i % 5][0]};"></div></div>
+        <div class="amt">${fmtCompact(s.profit)}</div>
+      </div>
+    `).join("");
+  }
+}
+
+// ============================================
+// CHARTS
+// ============================================
+function drawMonthlyChart() {
+  const canvas = document.getElementById("monthlyChart");
+  if (!canvas) return;
+  if (charts.monthly) charts.monthly.destroy();
+  const costs = MONTHS.map((_, i) => monthlyCostForMonth(i) / 100000);
+  const profits = MONTHS.map((_, i) => monthlyProfitForMonth(i) / 100000);
+  charts.monthly = new Chart(canvas, {
+    type: "bar",
+    data: {
+      labels: MONTHS.map(m => m.split(" ")[0]),
+      datasets: [
+        { label: "Cost", data: costs, backgroundColor: "rgba(239,68,68,0.7)", borderRadius: 6 },
+        { label: "Profit", data: profits, backgroundColor: "rgba(16,185,129,0.85)", borderRadius: 6 }
+      ]
+    },
+    options: {
+      responsive: true, maintainAspectRatio: false,
+      plugins: {
+        legend: { display: true, position: "top", align: "end", labels: { color: "#ececf5", font: { size: 11 }, boxWidth: 10, boxHeight: 10, padding: 12 } },
+        tooltip: { backgroundColor: "#14142b", borderColor: "#a855f7", borderWidth: 1, callbacks: { label: c => c.dataset.label + ": ₹" + c.raw.toFixed(2) + "L" } }
+      },
+      scales: {
+        x: { grid: { color: "rgba(255,255,255,0.04)" }, ticks: { color: "#8a8aa8", font: { size: 11 }, autoSkip: false } },
+        y: { grid: { color: "rgba(255,255,255,0.04)" }, ticks: { color: "#8a8aa8", font: { size: 11 }, callback: v => "₹" + v + "L" } }
+      }
+    }
+  });
+}
+function drawSplitChart() {
+  const canvas = document.getElementById("splitChart");
+  if (!canvas) return;
+  if (charts.split) charts.split.destroy();
+  const prodProfit = data.clients.reduce((s, c) => {
+    if (c.calcOpen && c.calcLines) return s + c.calcLines.reduce((a, l) => a + (Number(l.pcsMonth) || 0) * (Number(l.profitPc) || 0), 0);
+    return s;
+  }, 0);
+  const wholesaleProfit = data.wholesaleLeads.filter(l => l.stage === "closed").reduce((s, l) => {
+    return s + (l.calcLines || []).reduce((a, x) => a + (Number(x.pcsMonth) || 0) * (Number(x.profitPc) || 0), 0);
+  }, 0);
+  const retailProfit = data.retail.calcOpen && data.retail.calcLines ? data.retail.calcLines.reduce((s, l) => s + (Number(l.pcsMonth) || 0) * (Number(l.profitPc) || 0), 0) : 0;
+  const pipelineProfit = data.pipelineClients.filter(p => p.stage === "closed").reduce((s, p) => {
+    return s + (p.calcLines || []).reduce((a, l) => a + (Number(l.pcsMonth) || 0) * (Number(l.profitPc) || 0), 0);
+  }, 0);
+
+  charts.split = new Chart(canvas, {
+    type: "doughnut",
+    data: {
+      labels: ["Active production", "Pipeline (closed)", "Wholesale", "Retail"],
+      datasets: [{
+        data: [prodProfit, pipelineProfit, wholesaleProfit, retailProfit],
+        backgroundColor: ["#a855f7", "#06b6d4", "#ec4899", "#f59e0b"],
+        borderColor: "#0f0f24", borderWidth: 4
+      }]
+    },
+    options: {
+      responsive: true, maintainAspectRatio: false, cutout: "65%",
+      plugins: {
+        legend: { position: "bottom", labels: { color: "#ececf5", font: { size: 12 }, padding: 14, boxWidth: 12, boxHeight: 12 } },
+        tooltip: { backgroundColor: "#14142b", borderColor: "#a855f7", borderWidth: 1, callbacks: { label: c => c.label + ": " + fmtCompact(c.raw) } }
+      }
+    }
+  });
+}
+
+// ============================================
+// RENDER ALL
+// ============================================
+function renderAll() {
+  renderMonthSelector();
+  renderHealth();
+  renderHero();
+  renderHorizon();
+  renderKPIs();
+  renderCalendar();
+  renderMonthDetail();
+  renderMonthBatches();
+  renderBatches();
+  renderSkus();
+  renderClients();
+  renderPipeline();
+  renderWholesale();
+  renderRetail();
+  renderTasks();
+  renderRoadmap();
+  renderSetup();
+  renderBackup();
+  renderRings();
+  renderGlance();
+  renderActivity();
+  renderCalculator();
+  renderTurnover();
+  drawMonthlyChart();
+  drawSplitChart();
+  // Restore tab
+  document.querySelectorAll(".tab").forEach(t => t.classList.toggle("active", t.dataset.tab === currentTab));
+  document.querySelectorAll(".tab-content").forEach(c => c.classList.toggle("active", c.id === "tab-" + currentTab));
+}
+
+// ============================================
+// INIT
+// ============================================
+(async function init() {
+  await loadFromCloud();
+  renderAll();
+  subscribeToCloud();
+})();
+</script>
+
+</body>
+</html>
